@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Consistency check. Run from the workspace root before building. Exits non-zero on any failure.
-# Needs kdd and the realm from kdd.yaml (REALM below).
+# Needs kdd, a running cluster context for the realm (run ./k3d.sh up first), and the realm from kdd.yaml.
 set -uo pipefail
 
 REALM="${1:-${REALM:-dev_k3d}}"   # usage: ./check.sh [realm]
@@ -18,7 +18,10 @@ grep -nE '^[a-z_-]+::' Cargo.toml $(dirname "$CRATE")/../*/Cargo.toml 2>/dev/nul
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || bad "version in $CRATE must be a literal X.Y.Z (got '$VERSION')"
 grep -q 'workspace *= *true' <(grep '^version' "$CRATE") && bad "$CRATE uses version.workspace"
 
-kdd realm "$REALM" >/dev/null && kdd ktemplate >/dev/null
+# kdd selects a realm by kubectl context and asks to create a missing one: never let it prompt.
+kubectl config current-context >/dev/null 2>&1 || { echo "FAIL: no kubectl context. Create the cluster first (./k3d.sh up)." >&2; exit 1; }
+timeout 60 kdd realm "$REALM" </dev/null || { echo "FAIL: kdd realm $REALM (does its context exist?)" >&2; exit 1; }
+timeout 60 kdd ktemplate </dev/null || { echo "FAIL: kdd ktemplate" >&2; exit 1; }
 OUT="$(ls -d k8s/*/.out/"$REALM" 2>/dev/null | head -n1)"
 [ -d "$OUT" ] || { bad "no rendered output for realm $REALM"; exit 1; }
 
