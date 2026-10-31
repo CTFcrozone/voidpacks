@@ -12,7 +12,7 @@
 # kdd exits 0 even on failure, so every stage is gated by kubectl.
 set -euo pipefail
 
-SYSTEM=rust10x
+SYSTEM="$(sed -n 's/^system: *//p' kdd.yaml | head -n1)"   # single source: kdd.yaml
 CLUSTER=rust10x
 REG_NAME=rust10x-reg.localhost
 REG_PORT=5000
@@ -20,6 +20,8 @@ REALM=dev_k3d
 NS=rust10x-web-app
 
 VERSION="$(sed -n 's/^version *= *"\(.*\)"/\1/p' crates/services/web-server/Cargo.toml | head -n1)"
+[[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "bad version '$VERSION' (needs literal X.Y.Z in web-server Cargo.toml)" >&2; exit 1; }
+[ -n "$SYSTEM" ] || { echo "system missing in kdd.yaml" >&2; exit 1; }
 
 up() {
 	k3d registry create "$REG_NAME" --port "$REG_PORT"

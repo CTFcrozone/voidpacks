@@ -54,6 +54,8 @@ blocks:
 
 An item cannot have both `from_file` and `from_env`.
 
+> `from_file` extracts literal values only. A Cargo `version.workspace = true` is rendered as `{ workspace = true }`. Use a literal version in the crate you extract from. See `contract.md`.
+
 ### Second document: top-level keys
 
 | Key | Purpose |
