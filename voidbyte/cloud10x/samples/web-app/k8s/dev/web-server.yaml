@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rust10x-web-server
+  labels:
+    app: rust10x-web-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rust10x-web-server
+  template:
+    metadata:
+      labels:
+        app: rust10x-web-server
+        run: "{{system}}-web-server"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: web-server
+          image: "{{registry}}/rust10x-web-server:{{image_tag}}"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8081
+          envFrom:
+            - configMapRef:
+                name: rust10x-config
+            - secretRef:
+                name: rust10x-secret
+          readinessProbe:
+            tcpSocket:
+              port: 8081
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: 8081
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

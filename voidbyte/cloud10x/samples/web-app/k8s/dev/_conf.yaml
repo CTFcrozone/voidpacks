@@ -1,0 +1,26 @@
+# Shared, non-block resources. Dev-only placeholders: real values never enter git.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rust10x-config
+data:
+  SERVICE_TOKEN_DURATION_SEC: "1800"
+  SERVICE_WEB_FOLDER: web-folder/
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: rust10x-secret
+type: Opaque
+stringData:
+  SERVICE_TOKEN_KEY: REPLACE_ME
+  SERVICE_PWD_KEY: REPLACE_ME
+  SERVICE_DB_URL: postgres://app_user:REPLACE_ME@rust10x-db:5432/app_db
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: rust10x-db-secret
+type: Opaque
+stringData:
+  POSTGRES_PASSWORD: REPLACE_ME

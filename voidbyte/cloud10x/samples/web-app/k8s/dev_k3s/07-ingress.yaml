@@ -1,0 +1,20 @@
+# Dev: HTTP. Map the host locally: `127.0.0.1 api.rust10x.local` in /etc/hosts.
+# Staging/prod: add `spec.tls` and a cert-manager issuer (see guide/base/kubernetes.md).
+# Never commit a TLS private key.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rust10x-web-server
+  namespace: rust10x-web-app
+spec:
+  rules:
+    - host: api.rust10x.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: rust10x-web-server
+                port:
+                  number: 80

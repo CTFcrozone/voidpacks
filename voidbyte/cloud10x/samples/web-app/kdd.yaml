@@ -1,0 +1,33 @@
+vars:
+  - from_file: crates/services/web-server/Cargo.toml
+    extract: ["version"]
+  - from_env: ["USER"]                  # optional; available to templating
+  # overlays: [kdd.local.yaml]          # machine-specific realms, git-ignored
+---
+system: rust10x
+image_tag: "{{version}}"
+block_base_dir: crates/services/
+
+realms:
+  _base_:
+    web_external_ports: 8081
+
+  # Per-block manifests on minikube. Registry = host IP running `registry`; no trailing slash.
+  dev:
+    yaml_dir: k8s/dev/
+    context: minikube
+    registry: 192.168.0.104:5000
+    confirm_delete: false
+
+  # Numbered manifests on k3d (see k3d.sh). Context = `k3d-<cluster name>`.
+  dev_k3d:
+    yaml_dir: k8s/dev_k3s/
+    context: k3d-rust10x
+    registry: k3d-rust10x-reg.localhost:5000
+    confirm_delete: false
+
+blocks:
+  - name: db
+  - name: queue
+  - name: web-server
+  - name: db-mgmt
