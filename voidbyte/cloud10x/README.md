@@ -123,13 +123,14 @@ Do NOT add: <extra services, tools, or features that must not appear>.
 
 - <Version source: literal `version`, never `version.workspace = true`.>
 - <Names defined once; block names identical in blocks, manifests, labels, images, crate dirs.>
+- <Every env var the code reads is set explicitly in the manifests, even when the code has a default.>
 - Do not write manifests that fail `check.sh`.
 
 ## Output
 
 - List every file created and every assumption (ports, env names, which default each unresolved parameter used).
 - If something required is missing, state it instead of guessing.
-- End with exactly: `<commands to run next>`
+- End with exactly: `<commands to run next>` (cluster first, then `./check.sh`, then build: kdd needs the cluster context).
 
 ====
 ````
@@ -137,7 +138,7 @@ Do NOT add: <extra services, tools, or features that must not appear>.
 **Review checklist after a run**
 
 - File list matches the scope and nothing extra exists.
-- `./check.sh` prints `OK`.
+- `./check.sh` prints `OK` (run it after the cluster is up).
 - `cargo check --workspace --locked` passes.
 - No values copied from the samples that were not in your parameters.
 
