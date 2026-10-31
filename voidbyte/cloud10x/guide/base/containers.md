@@ -3,13 +3,13 @@
 ## Dockerfile rules
 
 - Multi-stage: build stage compiles, runtime stage only runs.
-- Pin base images to a specific version. In production, pin by digest.
-- Use a supported Debian release: `trixie` (stable) or `bookworm` (LTS). Never `bullseye` (LTS ended 2026-08-31). On `trixie` the OpenSSL runtime package is `libssl3t64`.
+- Base images: follow `parameters.md`. Language toolchain images float to the latest stable by default (`ARG`, below). Stateful images (Postgres, Valkey) are pinned to an explicit major. Production realms pin every image by digest.
+- Runtime OS: a currently supported release only (Alpine `3`, or Debian stable). Never an EOL release; check the vendor's date. Note: on newer Debian the OpenSSL runtime package may be `libssl3t64`. Prefer rustls and avoid the question.
 - Runtime stage installs runtime libraries only (`ca-certificates`, `libssl3`), never `-dev` packages. Prefer rustls to avoid OpenSSL entirely.
 - Run as a non-root numeric user: `USER 10001`. Match `runAsUser` in the manifest.
 - `ENTRYPOINT` in exec form, directly on the binary. No `bash -c`, no `source ~/.bashrc`, no `tail -f /dev/null`.
 - Build with `--locked` so `Cargo.lock` is honored.
-- Builder image `rust:<ver>` must be at least the highest `rust-version` any locked dependency requires. Use `rust:1.94-slim-bookworm` or newer; do not write older tags (e.g. 1.85) from memory. Symptom of a stale tag: `error: rustc X is not supported by the following packages`. Fix: raise the tag; do not downgrade crates.
+- Builder image: `ARG RUST_TAG=1-<variant>` then `FROM rust:${RUST_TAG}`. `1-<variant>` always resolves to the latest stable Rust 1.x, so no version is written from memory. To pin, build with `--build-arg RUST_TAG=<exact>-<variant>` or edit the default; if `rust-toolchain.toml` exists, set it to that version. Variants: `alpine` (musl), `slim` (Debian). Symptom of a toolchain older than a dependency needs: `error: rustc X is not supported by the following packages`; fix by raising the toolchain, never by downgrading crates.
 - Add a `.dockerignore` (`target/`, `.git/`, `rs-builder/rs-builder-target/`, local env files).
 - Cache dependencies: BuildKit cache mounts or `cargo-chef`. Avoid cache-busting `COPY . .` before dependency resolution when build time matters.
 
@@ -17,7 +17,8 @@ Rust workspace service (build context = workspace root):
 
 ```dockerfile
 # syntax=docker/dockerfile:1
-FROM rust:1.94-slim-bookworm AS builder
+ARG RUST_TAG=1-slim
+FROM rust:${RUST_TAG} AS builder
 WORKDIR /build
 COPY . .
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
@@ -25,7 +26,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     cargo build --locked --release -p web-server \
  && cp target/release/web-server /web-server
 
-FROM debian:bookworm-slim
+FROM debian:stable-slim
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ca-certificates libssl3 \
  && rm -rf /var/lib/apt/lists/*

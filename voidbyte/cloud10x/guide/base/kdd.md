@@ -228,6 +228,7 @@ template:
 
 ## Conventions
 
+- Names in the examples (`rust10x`, `192.168.0.104`, ports) are placeholders. Use the user's own values.
 - One manifest per block, named after the block: `db.yaml`, `queue.yaml`, `web-server.yaml`. Shared resources go in `_`-prefixed files: `_conf.yaml` (ConfigMap, Secret), `_in.yaml` (external Service). Numbered files (`00-`, `01-`) when order matters across many files.
 - Manifests are flat in `yaml_dir`.
 - Images are always templated: `"{{registry}}/{{system}}-{block}:{{image_tag}}"`. Hard-coded registries and versions are defects.
