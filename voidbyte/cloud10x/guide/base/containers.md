@@ -9,6 +9,7 @@
 - Run as a non-root numeric user: `USER 10001`. Match `runAsUser` in the manifest.
 - `ENTRYPOINT` in exec form, directly on the binary. No `bash -c`, no `source ~/.bashrc`, no `tail -f /dev/null`.
 - Build with `--locked` so `Cargo.lock` is honored.
+- Builder image `rust:<ver>` must be at least the highest `rust-version` any locked dependency requires. Use `rust:1.94-slim-bookworm` or newer; do not write older tags (e.g. 1.85) from memory. Symptom of a stale tag: `error: rustc X is not supported by the following packages`. Fix: raise the tag; do not downgrade crates.
 - Add a `.dockerignore` (`target/`, `.git/`, `rs-builder/rs-builder-target/`, local env files).
 - Cache dependencies: BuildKit cache mounts or `cargo-chef`. Avoid cache-busting `COPY . .` before dependency resolution when build time matters.
 
