@@ -165,7 +165,7 @@ prompts/            pro@coder prompt templates (not loaded as knowledge)
 
 Licensed under either of
 
-- Apache License, Version 2.0 ([../../../../LICENSE-APACHE](LICENSE-APACHE))
-- MIT license ([../../../../LICENSE-MIT](LICENSE-MIT))
+- Apache License, Version 2.0 ([LICENSE-APACHE](../../LICENSE-APACHE))
+- MIT license ([LICENSE-MIT](../../LICENSE-MIT))
 
 at your option. Unless you state otherwise, any contribution you intentionally submit for inclusion in this work, as defined in the Apache-2.0 license, is dual licensed as above, without any additional terms or conditions.
