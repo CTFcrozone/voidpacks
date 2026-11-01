@@ -1,7 +1,7 @@
 [pack]
 namespace = "voidbyte"
 name      = "cloud10x"
-version   = "0.3.1"
+version   = "0.3.2"
 
 # -- Optional section
 repo = "https://github.com/CTFcrozone/voidpacks"

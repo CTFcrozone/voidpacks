@@ -86,6 +86,7 @@ k8s/
 ## Rules
 
 - Files: exactly those in `samples/minimal/` (its two dotfiles are given above), plus `check.sh` and `lint.py` copied byte for byte from `samples/web-app/`.
+- The Dockerfile is copied verbatim, comments included; no other Dockerfile layout from anywhere else in the knowledge applies.
 - Same paths, same code, same comments, same ports (8081), labels, security settings and structure.
 - `version = "0.1.0"` stays a literal on its own line.
 - If `BASE_OS` is not `alpine`, or `RUST` is neither `latest` nor a version, write nothing and say so.

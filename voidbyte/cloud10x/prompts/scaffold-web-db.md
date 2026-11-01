@@ -55,6 +55,7 @@ Do NOT add: Valkey, queues, workers, extra services, Helm, Kustomize, service me
 
 - `web-server`, `kdd.yaml`, `k3d.sh`, Dockerfile pattern, namespace, ingress, hardening and NetworkPolicy style: reproduce `samples/minimal/` and apply the PARAMETERS the same way (value mapping in `prompts/scaffold-minimal.md`; reference values `rust10x`, `rust10x-web-app`, `cloudapp`, `api.rust10x.local`, `5000`, `dev_k3d`).
 - Database parts (`01-config`, `02-secrets`, `03-postgres`, `04-db-mgmt-job`, network policies for the DB): follow `samples/web-app/k8s/dev_k3s/` and `database.md`, adapted to the three workloads below. Drop everything about Valkey, queues and the `queue` block.
+- Every Dockerfile is the reference Dockerfile with only the crate name changed (`web-server` -> `db-mgmt`); no other layout applies.
 - Add to the reference only what the three workloads need; keep every convention of the reference unchanged.
 
 ## Rust code

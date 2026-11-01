@@ -13,12 +13,15 @@
 - Add a `.dockerignore` (`target/`, `.git/`, `rs-builder/rs-builder-target/`, local env files).
 - Cache dependencies: BuildKit cache mounts or `cargo-chef`. Avoid cache-busting `COPY . .` before dependency resolution when build time matters.
 
-Rust workspace service (build context = workspace root):
+Rust workspace service (build context = workspace root). This is the canonical Dockerfile; it is `samples/minimal/crates/services/web-server/Dockerfile` verbatim. Do not use any other layout (no `WORKDIR /service`, no shell entrypoint):
 
 ```dockerfile
 # syntax=docker/dockerfile:1
-ARG RUST_TAG=1-slim
+# Build context: workspace root.
+# Floats to the latest stable Rust 1.x. Pin: --build-arg RUST_TAG=<version>-alpine
+ARG RUST_TAG=1-alpine
 FROM rust:${RUST_TAG} AS builder
+RUN apk add --no-cache musl-dev
 WORKDIR /build
 COPY . .
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
@@ -26,16 +29,14 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     cargo build --locked --release -p web-server \
  && cp target/release/web-server /web-server
 
-FROM debian:stable-slim
-RUN apt-get update \
- && apt-get install -y --no-install-recommends ca-certificates libssl3 \
- && rm -rf /var/lib/apt/lists/*
-WORKDIR /service
-COPY --from=builder /web-server ./web-server
-COPY web-folder ./web-folder
-USER 10001
-ENTRYPOINT ["/service/web-server"]
+FROM alpine:3
+RUN apk add --no-cache ca-certificates
+COPY --from=builder /web-server /web-server
+USER 10001:10001
+ENTRYPOINT ["/web-server"]
 ```
+
+Variants: replace the crate name for other binaries. For a Debian runtime use `rust:${RUST_TAG}` with `RUST_TAG=1-slim`, drop the `apk` lines, and install `ca-certificates` with `apt-get` in the runtime stage. Static assets, if any, are copied explicitly to a fixed path and referenced by absolute path from the binary.
 
 Build outside kdd (the workspace root is the context; `kdd dbuild` uses the block folder), tag with kdd's local prefix, then let kdd push:
 

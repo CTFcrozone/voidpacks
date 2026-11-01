@@ -6,4 +6,3 @@ metadata:
 data:
   SERVICE_TOKEN_DURATION_SEC: "1800"
   SERVICE_WEB_FOLDER: web-folder/
-  SERVICE_SQL_FOLDER: /service/sql/
