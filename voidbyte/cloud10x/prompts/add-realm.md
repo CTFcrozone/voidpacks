@@ -39,14 +39,14 @@ Resolve every value not listed here from `kdd.yaml` and `environments.md`. Never
 
 # TASK
 
-Add the realm `REALM` to the existing project, following `environments.md`. Do not touch other realms.
+Add the realm `REALM` to the existing project, following `environments.md`. Add only that realm (and `realms._base_` if absent, holding only variables the new manifests use). Do not add, rename or edit any other realm, and do not add unused variables.
 
 ## Files
 
 - `kdd.yaml`: realm `REALM` with `yaml_dir`, `context`, `registry`, `profile` (if any), `confirm_delete: true`. Realm-specific values (replicas, resource sizes, hostnames) as realm variables, not by copying manifests.
 - `YAML_DIR`: manifests derived from the existing dev set. Same file names and numbering; differences only through realm variables or files removed because of `MANAGED_DB`.
 - Manifests use realm variables (`{{replicas}}`, `{{ingress_host}}`, ...) for everything that differs; add safe defaults to `realms._base_`.
-- Production-grade differences per `environments.md`: image reference by digest when the realm requires it, no `latest`, real secrets come from the secret store (no `REPLACE_ME` values applied by hand), TLS terminated at the ingress with a cert issuer reference (no key material in the repo).
+- Production-grade differences per `environments.md`: image reference by digest when the realm requires it, no `latest`, secrets come from the secret store: `YAML_DIR` has no `02-secrets.yaml` and no `REPLACE_ME` anywhere; workloads reference Secrets by the same names as the dev set, and the output checklist lists each Secret name and key the store must provide, TLS terminated at the ingress with a cert issuer reference (no key material in the repo).
 - `.gitignore`: add `kdd.local.yaml` if missing.
 
 ## Consistency (see contract.md, lint.md)
