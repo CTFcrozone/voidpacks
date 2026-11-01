@@ -109,59 +109,129 @@ Rules:
 
 ## Major version upgrade (in-cluster StatefulSet)
 
-Drops (above) change the schema. A **major version** change (18 to 19) is a different procedure: PostgreSQL refuses to start a new major on a data directory initialized by the old one. Bumping the image tag on the existing volume crash-loops the pod. The data volume must be recreated and the data restored from a dump. The dump/restore path below was tested on a real server; the Kubernetes steps were not.
+Drops (above) change the schema. A **major version** change (18 to 19) is different: PostgreSQL refuses to start a new major on a data directory initialized by the old one, so bumping the image on the existing volume crash-loops the pod. The volume must be recreated and the data restored from a dump.
 
-Placeholders: `NS` namespace, `STS` the db StatefulSet (`<system>-db`), `PVC` the claim (`data-<STS>-0`, from `volumeClaimTemplates`), `DUMP` the backup file **on the operator machine**, `FROM`/`TO` majors.
+The scripts below are the procedure. A runbook copies them verbatim and changes only the values in the variables block. Tested: the dump, gating, restore, ownership, row counts and rollback flow ran against a real PostgreSQL server with a stubbed `kubectl`/`kdd`, including a failing dump that aborts before anything is deleted. Not tested: a live cluster (PVC deletion, the old-volume crash-loop, pod scheduling).
 
 Rules:
 
-- Stream through `kubectl exec`. Dumps go to a local file with `>`, restores read stdin with `exec -i`. No port-forward, no local client versions to match, no password on a command line, no pod `/tmp` (an `emptyDir`, lost on restart). Use `-i`, never `-it`, in scripted commands.
-- The official image trusts the local socket, so `-U postgres` works inside the pod with no password.
-- Apply manifests with `kdd kapply <stem>`, never `kubectl apply -f k8s/...`: the source files are templates (`{{system}}`, `{{image_tag}}`) and only the rendered `.out/` files are valid YAML.
-- Roles come from db-mgmt and the secrets, not from the dump. Precondition: `\du` lists only `postgres` and `app_user`; if there are other roles, also take `pg_dumpall --globals-only` and replay it first.
+- Stream through `kubectl exec`: dumps go to a local file with `>`, restores read stdin with `exec -i`. No port-forward, no local client versions to match, no password on a command line, no file in the pod (`/tmp` there is an `emptyDir`). Use `-i`, never `-it`, in scripts. The official image trusts the local socket, so `-U postgres` needs no password.
+- `set -euo pipefail` in every phase. A step that fails stops the script before the next one.
+- **Nothing is deleted before the final dump is verified**: it is written to `$DUMP.partial`, restored into the rehearsal instance, and its row counts compared with the source. Only then it replaces `$DUMP`. Deleting the PVC destroys the only copy of the data on the cluster.
+- Apply with `kdd kapply <stem>`, never `kubectl apply -f k8s/...` on source files: they are templates (`{{system}}`, `{{image_tag}}`) and only the rendered `.out/` files are valid YAML. The rehearsal manifest is generated from the rendered file; check it holds only the db objects (Service, StatefulSet) before applying.
+- Roles come from db-mgmt and the secrets, not from the dump. Precondition: `\du` lists only `postgres` and `app_user`; otherwise also dump `pg_dumpall --globals-only` and replay it first.
 - Restore keeps ownership (no `--no-owner`): db-mgmt creates `app_user` and `app_db` first, so objects land owned by `app_user`.
-- This procedure has downtime. If downtime is not allowed, stop: the answer is logical replication or a managed service, and the runbook states that under "Open questions" instead of improvising.
-- Deleting the PVC destroys the only copy of the data on the cluster. Do it only after the dump is verified and the rehearsal passed.
+- This procedure has downtime. If downtime is not allowed, stop: the answer is logical replication or a managed service. Say so under "Open questions" instead of improvising.
+- Rehearsal needs no NetworkPolicy change: its pods are not selected by the allow rules, and `kubectl exec` does not use the network. Smoke-testing the application against it is optional and needs a temporary config and allow rule.
+- After phase B starts, a failure at or after the PVC deletion is recovered from `$DUMP` (verified); do not re-run phase A.
 
-Backup (and the final dump in the cutover):
+Preconditions (run, read the output):
 
 ```sh
-kubectl -n NS exec STS-0 -- pg_dump -U postgres -Fc app_db > DUMP
-kubectl -n NS exec -i STS-0 -- pg_restore -l < DUMP | head        # readable archive; non-empty
+kubectl -n NS exec STS-0 -- psql -U postgres -At -c '\du'     # only postgres and app_user
+docker manifest inspect postgres:TO-<variant> >/dev/null && echo exists
 ```
 
-Row counts before and after (same command both times, outputs must be identical):
+Variables (values come from the project's manifests; the names below are the sample's):
 
 ```sh
-kubectl -n NS exec -i STS-0 -- psql -U postgres -d app_db -At -f - <<'SQL'
+NS=rust10x-web-app
+SYS=rust10x
+STS=$SYS-db
+PVC=data-$STS-0                      # <volumeClaimTemplates name>-<STS>-<ordinal>
+WEB=$SYS-web-server
+JOB=$SYS-db-mgmt
+FROM=18; TO=19
+SRC=k8s/dev_k3s                      # source manifests (templates)
+OUT=k8s/dev_k3s/.out/dev_k3d         # rendered by kdd for the current realm
+DUMP=/tmp/rust10x-pg18-pre-upgrade.dump
+K="kubectl -n $NS"
+counts() {   # per-table row counts of app_db in pod $1
+  $K exec -i "$1" -- psql -U postgres -d app_db -At -f - <<'SQL'
 SELECT format('SELECT %L, count(*) FROM %s', c.oid::regclass, c.oid::regclass) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.relkind = 'r' AND n.nspname NOT IN ('pg_catalog','information_schema') ORDER BY 1 \gexec
 SQL
+}
 ```
 
-Rehearsal (required before the cutover): render `03-postgres` (`kdd ktemplate 03-postgres`), copy the rendered StatefulSet and Service to a scratch file with new names, selector labels and `serviceName` (`<STS>-rehearsal`), the same ServiceAccount, image `postgres:TO`, and its own `volumeClaimTemplates`. It must still pass the hardening rules. Apply it, wait for ready, run db-mgmt's two statements by hand or restore into it as below, `kubectl exec -i <STS>-rehearsal-0 -- pg_restore -U postgres -d app_db --exit-on-error < DUMP` after creating the role and database, compare row counts, then delete the scratch StatefulSet and its PVC. NetworkPolicies select `app=<STS>`, so the scratch pod is isolated; `exec` needs no network. Smoke-testing the application against it (`/ready`) needs a temporary copy of the app's config pointing at the scratch Service plus an allow rule; mark that optional.
-
-Cutover:
+Phase A - backup and rehearsal (no production change; leaves the rehearsal instance running):
 
 ```sh
-kubectl -n NS scale deployment/<system>-web-server --replicas=0
-kubectl -n NS delete job/<system>-db-mgmt --ignore-not-found
-# final dump + pg_restore -l + row counts, as above
-kubectl -n NS delete statefulset/STS
-kubectl -n NS delete pvc/PVC                      # destroys the data; dump verified first
-# set the image to postgres:TO in k8s/<realm>/03-postgres.yaml
+set -euo pipefail
+# A. Backup and rehearsal. Changes nothing in production. Leaves the rehearsal instance running.
+$K exec "$STS-0" -- pg_dump -U postgres -Fc app_db > "$DUMP.partial"
+test -s "$DUMP.partial"
+kdd ktemplate 03-postgres
+sed -E "/serviceAccountName/! s/$STS/$STS-rehearsal/g; s|(image: postgres:)$FROM|\1$TO|" "$OUT/03-postgres.yaml" > "/tmp/$STS-rehearsal.yaml"
+$K apply -f "/tmp/$STS-rehearsal.yaml"
+$K rollout status "statefulset/$STS-rehearsal" --timeout=180s
+$K exec -i "$STS-rehearsal-0" -- psql -U postgres -v ON_ERROR_STOP=1 <<'SQL'
+CREATE ROLE app_user LOGIN;
+CREATE DATABASE app_db OWNER app_user;
+SQL
+$K exec -i "$STS-rehearsal-0" -- pg_restore -U postgres -d app_db --exit-on-error < "$DUMP.partial"
+SRC_COUNTS=$(counts "$STS-0"); test -n "$SRC_COUNTS"
+REH_COUNTS=$(counts "$STS-rehearsal-0")
+test "$SRC_COUNTS" = "$REH_COUNTS"
+mv "$DUMP.partial" "$DUMP"
+echo "rehearsal OK: dump restores on postgres $TO with identical row counts"
+```
+
+Phase B - cutover (downtime):
+
+```sh
+set -euo pipefail
+# B. Cutover. Requires phase A (rehearsal instance still running). Downtime starts here.
+REPLICAS=$($K get "deployment/$WEB" -o jsonpath='{.spec.replicas}')
+$K scale "deployment/$WEB" --replicas=0
+$K delete "job/$JOB" --ignore-not-found
+# final dump, verified by restoring it into the rehearsal instance before anything is deleted
+$K exec "$STS-0" -- pg_dump -U postgres -Fc app_db > "$DUMP.partial"
+test -s "$DUMP.partial"
+$K exec -i "$STS-rehearsal-0" -- pg_restore -U postgres -d app_db --clean --if-exists --exit-on-error < "$DUMP.partial"
+counts "$STS-0" > "$DUMP.counts"; test -s "$DUMP.counts"
+counts "$STS-rehearsal-0" | diff - "$DUMP.counts"
+mv "$DUMP.partial" "$DUMP"
+# point of no return: the old data volume is destroyed
+$K delete "statefulset/$STS"
+$K delete "pvc/$PVC"
+sed -i -E "s|(image: postgres:)$FROM|\1$TO|" "$SRC/03-postgres.yaml"
+git diff -- "$SRC/03-postgres.yaml"
 kdd kapply 03-postgres
-kubectl -n NS rollout status statefulset/STS --timeout=180s
+$K rollout status "statefulset/$STS" --timeout=180s
 kdd kapply 04-db-mgmt-job
-kubectl -n NS wait --for=condition=complete job/<system>-db-mgmt --timeout=300s
-kubectl -n NS exec -i STS-0 -- pg_restore -U postgres -d app_db --clean --if-exists --exit-on-error < DUMP
-# row counts: identical to the final dump's counts
-kubectl -n NS scale deployment/<system>-web-server --replicas=2
-kubectl -n NS rollout status deployment/<system>-web-server --timeout=180s
+$K wait --for=condition=complete "job/$JOB" --timeout=300s
+$K exec -i "$STS-0" -- pg_restore -U postgres -d app_db --clean --if-exists --exit-on-error < "$DUMP"
+counts "$STS-0" | diff - "$DUMP.counts"
+$K scale "deployment/$WEB" --replicas="$REPLICAS"
+$K rollout status "deployment/$WEB" --timeout=180s
+$K delete -f "/tmp/$STS-rehearsal.yaml"
+$K delete "pvc/data-$STS-rehearsal-0"
+echo "cutover OK: now check /health, /ready and one business request"
 ```
 
 Then verify `/health`, `/ready` and one business request.
 
-Rollback is the same cutover with `FROM`: scale writers down, delete the StatefulSet **and its PVC** (the volume now holds `TO` data and `FROM` will not start on it), set the image back to `postgres:FROM`, `kdd kapply 03-postgres`, db-mgmt, restore the pre-cutover `DUMP`, scale up. Writers were stopped before the final dump, so nothing is lost. Decide before the window; rollback after writes resumed on `TO` loses those writes.
+Phase C - rollback to `FROM` (writes made on `TO` are lost; decide before the window):
+
+```sh
+set -euo pipefail
+# C. Rollback to $FROM from the verified dump. Writers must be stopped; writes made on $TO are lost.
+REPLICAS=$($K get "deployment/$WEB" -o jsonpath='{.spec.replicas}')
+$K scale "deployment/$WEB" --replicas=0
+$K delete "job/$JOB" --ignore-not-found
+$K delete "statefulset/$STS"
+$K delete "pvc/$PVC"                 # the volume holds $TO data; $FROM cannot start on it
+git checkout -- "$SRC/03-postgres.yaml"
+kdd kapply 03-postgres
+$K rollout status "statefulset/$STS" --timeout=180s
+kdd kapply 04-db-mgmt-job
+$K wait --for=condition=complete "job/$JOB" --timeout=300s
+test -s "$DUMP"
+$K exec -i "$STS-0" -- pg_restore -U postgres -d app_db --clean --if-exists --exit-on-error < "$DUMP"
+counts "$STS-0" | diff - "$DUMP.counts"
+$K scale "deployment/$WEB" --replicas="$REPLICAS"
+$K rollout status "deployment/$WEB" --timeout=180s
+```
 
 ## Dev initialization flow
 
