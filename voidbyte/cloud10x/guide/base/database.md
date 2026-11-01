@@ -117,6 +117,7 @@ Rules:
 
 - Stream through `kubectl exec`: dumps go to a local file with `>`, restores read stdin with `exec -i`. No port-forward, no local client versions to match, no password on a command line, no file in the pod (`/tmp` there is an `emptyDir`). Use `-i`, never `-it`, in scripts. The official image trusts the local socket, so `-U postgres` needs no password.
 - Phase A first checks that the target image exists (`docker manifest inspect`) and stops before touching anything if it does not. A major that is not released yet cannot be rehearsed.
+- Every guard prints why it stopped (`FAIL: ...` through `die`); a script must never exit silently. `counts` always prints a `tables|N` line, so an empty database (no tables) is a valid, comparable state.
 - `set -euo pipefail` in every phase: a failing step stops the script before the next one. For the same reason never paste a phase into an interactive shell (the next error would close your terminal). Save the variables block as `vars.sh` and each phase as `phaseA.sh`, `phaseB.sh`, `phaseC.sh`, then run `bash -c 'source vars.sh; source phaseA.sh'`.
 - Do not commit the image change until the cutover is verified. Phase B edits `03-postgres.yaml` in the working tree and phase C reverts it with `git checkout`; a committed change would make the rollback a no-op.
 - If phase A stops after applying the rehearsal (for example the target image does not exist), clean up before retrying: `kubectl -n NS delete -f /tmp/<STS>-rehearsal.yaml; kubectl -n NS delete pvc/data-<STS>-rehearsal-0`.
@@ -149,8 +150,10 @@ SRC=k8s/dev_k3s                      # source manifests (templates)
 OUT=k8s/dev_k3s/.out/dev_k3d         # rendered by kdd for the current realm
 DUMP=/tmp/rust10x-pg18-pre-upgrade.dump
 K="kubectl -n $NS"
-counts() {   # per-table row counts of app_db in pod $1
+die() { echo "FAIL: $*" >&2; exit 1; }
+counts() {   # table count and per-table row counts of app_db in pod $1 (never empty, even with no tables)
   $K exec -i "$1" -- psql -U postgres -d app_db -At -f - <<'SQL'
+SELECT 'tables', count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.relkind = 'r' AND n.nspname NOT IN ('pg_catalog','information_schema');
 SELECT format('SELECT %L, count(*) FROM %s', c.oid::regclass, c.oid::regclass) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.relkind = 'r' AND n.nspname NOT IN ('pg_catalog','information_schema') ORDER BY 1 \gexec
 SQL
 }
@@ -165,7 +168,7 @@ IMG=$(grep -oE "postgres:$FROM[^\"[:space:]]*" "$SRC/03-postgres.yaml" | head -1
 NEW_IMG=${IMG/:$FROM/:$TO}
 docker manifest inspect "$NEW_IMG" >/dev/null || { echo "image $NEW_IMG does not exist: stop" >&2; exit 1; }
 $K exec "$STS-0" -- pg_dump -U postgres -Fc app_db > "$DUMP.partial"
-test -s "$DUMP.partial"
+test -s "$DUMP.partial" || die "dump is empty"
 kdd ktemplate 03-postgres
 sed -E "/serviceAccountName/! s/$STS/$STS-rehearsal/g; s|(image: postgres:)$FROM|\1$TO|" "$OUT/03-postgres.yaml" > "/tmp/$STS-rehearsal.yaml"
 $K apply -f "/tmp/$STS-rehearsal.yaml"
@@ -175,9 +178,10 @@ CREATE ROLE app_user LOGIN;
 CREATE DATABASE app_db OWNER app_user;
 SQL
 $K exec -i "$STS-rehearsal-0" -- pg_restore -U postgres -d app_db --exit-on-error < "$DUMP.partial"
-SRC_COUNTS=$(counts "$STS-0"); test -n "$SRC_COUNTS"
+SRC_COUNTS=$(counts "$STS-0"); test -n "$SRC_COUNTS" || die "cannot read row counts from $STS-0"
 REH_COUNTS=$(counts "$STS-rehearsal-0")
-test "$SRC_COUNTS" = "$REH_COUNTS"
+test "$SRC_COUNTS" = "$REH_COUNTS" || die "row counts differ: $STS-0 vs $STS-rehearsal-0"
+echo "$SRC_COUNTS"
 mv "$DUMP.partial" "$DUMP"
 echo "rehearsal OK: dump restores on postgres $TO with identical row counts"
 ```
@@ -192,10 +196,10 @@ $K scale "deployment/$WEB" --replicas=0
 $K delete "job/$JOB" --ignore-not-found
 # final dump, verified by restoring it into the rehearsal instance before anything is deleted
 $K exec "$STS-0" -- pg_dump -U postgres -Fc app_db > "$DUMP.partial"
-test -s "$DUMP.partial"
+test -s "$DUMP.partial" || die "final dump is empty; nothing was deleted"
 $K exec -i "$STS-rehearsal-0" -- pg_restore -U postgres -d app_db --clean --if-exists --exit-on-error < "$DUMP.partial"
-counts "$STS-0" > "$DUMP.counts"; test -s "$DUMP.counts"
-counts "$STS-rehearsal-0" | diff - "$DUMP.counts"
+counts "$STS-0" > "$DUMP.counts"; test -s "$DUMP.counts" || die "cannot read row counts; nothing was deleted"
+counts "$STS-rehearsal-0" | diff - "$DUMP.counts" || die "final dump does not restore identically; nothing was deleted"
 mv "$DUMP.partial" "$DUMP"
 # point of no return: the old data volume is destroyed
 $K delete "statefulset/$STS"
@@ -207,7 +211,7 @@ $K rollout status "statefulset/$STS" --timeout=180s
 kdd kapply 04-db-mgmt-job
 $K wait --for=condition=complete "job/$JOB" --timeout=300s
 $K exec -i "$STS-0" -- pg_restore -U postgres -d app_db --clean --if-exists --exit-on-error < "$DUMP"
-counts "$STS-0" | diff - "$DUMP.counts"
+counts "$STS-0" | diff - "$DUMP.counts" || die "row counts differ after the restore; recover from $DUMP"
 $K scale "deployment/$WEB" --replicas="$REPLICAS"
 $K rollout status "deployment/$WEB" --timeout=180s
 $K delete -f "/tmp/$STS-rehearsal.yaml"
@@ -232,9 +236,9 @@ kdd kapply 03-postgres
 $K rollout status "statefulset/$STS" --timeout=180s
 kdd kapply 04-db-mgmt-job
 $K wait --for=condition=complete "job/$JOB" --timeout=300s
-test -s "$DUMP"
+test -s "$DUMP" || die "no verified dump at $DUMP"
 $K exec -i "$STS-0" -- pg_restore -U postgres -d app_db --clean --if-exists --exit-on-error < "$DUMP"
-counts "$STS-0" | diff - "$DUMP.counts"
+counts "$STS-0" | diff - "$DUMP.counts" || die "row counts differ after the restore; recover from $DUMP"
 $K scale "deployment/$WEB" --replicas="$REPLICAS"
 $K rollout status "deployment/$WEB" --timeout=180s
 ```

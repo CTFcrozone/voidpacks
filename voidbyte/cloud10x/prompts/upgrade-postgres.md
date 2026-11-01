@@ -39,7 +39,7 @@ Write a runbook for upgrading PostgreSQL from `FROM_MAJOR` to `TO_MAJOR` for thi
 
 ## Content
 
-The procedure is the "Major version upgrade (in-cluster StatefulSet)" section of `database.md`: its variables block and phases A, B and C. Copy them into the runbook **verbatim**, changing only the values in the variables block. Do not paraphrase a phase into prose, drop `set -euo pipefail`, reorder steps, or add an in-place image bump on the existing volume (PostgreSQL will not start a new major on an old data directory). Read the values from the project's manifests: namespace, system, StatefulSet, PVC (`volumeClaimTemplates` name + StatefulSet + `-0`), web-server Deployment, db-mgmt Job, rendered output folder, the realm's source folder.
+The procedure is the "Major version upgrade (in-cluster StatefulSet)" section of `database.md`: its variables block and phases A, B and C. Copy them into the runbook **verbatim, comments included** (the "point of no return" comment is a safety marker), changing only the values in the variables block. Do not paraphrase a phase into prose, drop `set -euo pipefail`, reorder steps, or add an in-place image bump on the existing volume (PostgreSQL will not start a new major on an old data directory). Read the values from the project's manifests: namespace, system, StatefulSet, PVC (`volumeClaimTemplates` name + StatefulSet + `-0`), web-server Deployment, db-mgmt Job, rendered output folder, the realm's source folder.
 
 Runbook sections, in order:
 
