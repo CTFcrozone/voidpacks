@@ -9,6 +9,7 @@ Every name and version is defined once and only referenced elsewhere. A scaffold
 | system name | `system:` in `kdd.yaml` | `{{system}}` in manifests, `SYSTEM` in scripts (read from `kdd.yaml`) |
 | image tag | `version = "X.Y.Z"` literal in `crates/services/web-server/Cargo.toml` | `kdd.yaml` var `version` -> `image_tag`; build script reads the same file |
 | registry | `registry:` of the realm in `kdd.yaml` | `{{registry}}` in manifests |
+| cluster, registry host, port | `CLUSTER`, `REG_NAME`, `REG_PORT` in the cluster script | realm `context: k3d-<CLUSTER>` and `registry: k3d-<REG_NAME>:<REG_PORT>` in `kdd.yaml`; `REG_NAME` is always `<CLUSTER>-reg.localhost` |
 | namespace | `01`/`00-namespace` manifest | scripts and `-n` flags |
 | env var names | the Rust config code | ConfigMap, Secrets, Job, Deployment: identical spelling |
 | ports | one table in the web-server manifest header | Service targetPort, containerPort, probes, NetworkPolicy |

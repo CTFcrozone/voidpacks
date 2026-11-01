@@ -18,6 +18,17 @@ grep -nE '^[a-z_-]+::' Cargo.toml $(dirname "$CRATE")/../*/Cargo.toml 2>/dev/nul
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || bad "version in $CRATE must be a literal X.Y.Z (got '$VERSION')"
 grep -q 'workspace *= *true' <(grep '^version' "$CRATE") && bad "$CRATE uses version.workspace"
 
+# k3d.sh constants must agree with the kdd.yaml realm (cluster, registry host and port)
+if [ -f k3d.sh ]; then
+	K_CLUSTER="$(sed -n 's/^CLUSTER=//p' k3d.sh | head -n1)"
+	K_REG="$(sed -n 's/^REG_NAME=//p' k3d.sh | head -n1)"
+	K_PORT="$(sed -n 's/^REG_PORT=//p' k3d.sh | head -n1)"
+	[ -n "$K_CLUSTER" ] && [ -n "$K_REG" ] && [ -n "$K_PORT" ] || bad "k3d.sh must define CLUSTER, REG_NAME and REG_PORT"
+	[ "$K_REG" = "${K_CLUSTER}-reg.localhost" ] || bad "k3d.sh REG_NAME ($K_REG) must be CLUSTER-reg.localhost (${K_CLUSTER}-reg.localhost)"
+	grep -qE "registry: *k3d-${K_REG}:${K_PORT}( |$|,|\})" kdd.yaml || bad "kdd.yaml registry must be k3d-${K_REG}:${K_PORT} (k3d.sh)"
+	grep -qE "context: *k3d-${K_CLUSTER}( |$|,|\})" kdd.yaml || bad "kdd.yaml context must be k3d-${K_CLUSTER} (k3d.sh)"
+fi
+
 # kdd selects a realm by kubectl context and asks to create a missing one: never let it prompt.
 kubectl config current-context >/dev/null 2>&1 || { echo "FAIL: no kubectl context. Create the cluster first (./k3d.sh up)." >&2; exit 1; }
 timeout 60 kdd realm "$REALM" </dev/null || { echo "FAIL: kdd realm $REALM (does its context exist?)" >&2; exit 1; }
