@@ -116,6 +116,7 @@ The scripts below are the procedure. A runbook copies them verbatim and changes 
 Rules:
 
 - Stream through `kubectl exec`: dumps go to a local file with `>`, restores read stdin with `exec -i`. No port-forward, no local client versions to match, no password on a command line, no file in the pod (`/tmp` there is an `emptyDir`). Use `-i`, never `-it`, in scripts. The official image trusts the local socket, so `-U postgres` needs no password.
+- Phase A first checks that the target image exists (`docker manifest inspect`) and stops before touching anything if it does not. A major that is not released yet cannot be rehearsed.
 - `set -euo pipefail` in every phase: a failing step stops the script before the next one. For the same reason never paste a phase into an interactive shell (the next error would close your terminal). Save the variables block as `vars.sh` and each phase as `phaseA.sh`, `phaseB.sh`, `phaseC.sh`, then run `bash -c 'source vars.sh; source phaseA.sh'`.
 - Do not commit the image change until the cutover is verified. Phase B edits `03-postgres.yaml` in the working tree and phase C reverts it with `git checkout`; a committed change would make the rollback a no-op.
 - If phase A stops after applying the rehearsal (for example the target image does not exist), clean up before retrying: `kubectl -n NS delete -f /tmp/<STS>-rehearsal.yaml; kubectl -n NS delete pvc/data-<STS>-rehearsal-0`.
@@ -160,6 +161,9 @@ Phase A - backup and rehearsal (no production change; leaves the rehearsal insta
 ```sh
 set -euo pipefail
 # A. Backup and rehearsal. Changes nothing in production. Leaves the rehearsal instance running.
+IMG=$(grep -oE "postgres:$FROM[^\"[:space:]]*" "$SRC/03-postgres.yaml" | head -1); test -n "$IMG"
+NEW_IMG=${IMG/:$FROM/:$TO}
+docker manifest inspect "$NEW_IMG" >/dev/null || { echo "image $NEW_IMG does not exist: stop" >&2; exit 1; }
 $K exec "$STS-0" -- pg_dump -U postgres -Fc app_db > "$DUMP.partial"
 test -s "$DUMP.partial"
 kdd ktemplate 03-postgres
