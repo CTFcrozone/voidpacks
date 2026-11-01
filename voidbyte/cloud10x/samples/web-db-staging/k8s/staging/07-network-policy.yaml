@@ -1,0 +1,70 @@
+# Default deny, then explicit allows. Policies are additive.
+# Every connection needs BOTH halves: client egress + server ingress. Ports are POD ports.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: rust10x-web-app
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: rust10x-web-app
+spec:
+  podSelector: {}
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+---
+# Ingress controller (traefik in k3s lives in kube-system) -> web-server pod port 8081.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: web-server-allow-ingress-controller
+  namespace: rust10x-web-app
+spec:
+  podSelector:
+    matchLabels:
+      app: rust10x-web-server
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - { protocol: TCP, port: 8081 }
+---
+# web-server -> managed PostgreSQL (external, by address).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: web-server-allow-egress
+  namespace: rust10x-web-app
+spec:
+  podSelector:
+    matchLabels:
+      app: rust10x-web-server
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - ipBlock:
+            cidr: "{{db_cidr}}"
+      ports:
+        - { protocol: TCP, port: 5432 }

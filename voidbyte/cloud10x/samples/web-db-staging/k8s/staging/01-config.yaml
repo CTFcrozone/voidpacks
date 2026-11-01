@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rust10x-config
+  namespace: rust10x-web-app
+data:
+  RUST_LOG: info

@@ -40,6 +40,22 @@ Replace every occurrence of the reference value with the parameter value, in eve
 
 The fixed `localhost:5000` in the `docker build` tag stays: it is kdd's local prefix, not the registry port.
 
+## Realm reference (`samples/web-db-staging/`)
+
+A realm is added the same way: reproduce the reference, replace its values, change nothing else. The reference holds only the new files (overlay `staging/kdd-staging.yaml` and `k8s/staging/`); the project's existing files are never copied over. Project names (system, namespace) are not parameters here: read them from the project's dev set and map `rust10x` and `rust10x-web-app` to them as in the table above. Then apply these rows in this order:
+
+| Reference value | Parameter |
+|---|---|
+| `letsencrypt-staging` | `CERT_ISSUER` |
+| `api.rust10x.example` | `INGRESS_HOST` |
+| `staging-example` | `CONTEXT` |
+| `registry.example.com` | `REGISTRY` |
+| `203.0.113.0/24` | `DB_CIDR` |
+| `replicas: 3` | `replicas: <REPLICAS>` |
+| `staging` (realm name, directory `staging/`, file `kdd-staging.yaml`, `k8s/staging/`) | `REALM` |
+
+`kdd.yaml` changes only by the entry `- <REALM>/kdd-<REALM>.yaml` under `overlays:` in its first YAML document (before `vars:`); create the key if absent. `.gitignore` gains `kdd.local.yaml` if missing. If `PROFILE` is set, add `profile: <PROFILE>` to the realm; otherwise nothing. The all-zero `web_server_digest` stays: it is a deliberate placeholder the release pipeline replaces.
+
 ## Dotfiles
 
 Globs may hide dotfiles, so their content is given here. Create them exactly.

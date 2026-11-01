@@ -1,0 +1,13 @@
+# Committed overlay: kdd merges these realms over kdd.yaml (same-name realms are replaced; _base_ still applies).
+# Digests come from the build that produced the images (environments.md). The zero digest never pulls: replace it per release.
+realms:
+  staging:
+    yaml_dir: k8s/staging/
+    context: staging-example
+    registry: registry.example.com
+    confirm_delete: true
+    replicas: 3
+    ingress_host: api.rust10x.example
+    cert_issuer: letsencrypt-staging
+    db_cidr: 203.0.113.0/24
+    web_server_digest: "sha256:0000000000000000000000000000000000000000000000000000000000000000"

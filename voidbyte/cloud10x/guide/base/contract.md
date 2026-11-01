@@ -42,4 +42,5 @@ Each of these happened in a real scaffold. All are checked by `check.sh` / `lint
 | `rustc X is not supported by the following packages` | stale pinned Rust tag | floating `rust:${RUST_TAG}` (`parameters.md`) |
 | cluster half-created, script continues | `\|\| true` on create commands | create only if absent; never mask failures |
 | kdd prompt hangs `check.sh` | realm context does not exist yet | create the cluster first, then `check.sh` |
+| realm adds a Secret, `REPLACE_ME`, a tag image, a renamed file or a reused context | `check.sh` fails the realm (`environments.md`, "Adding a realm") |
 | realm "not found" though it is in an overlay | overlay path wrong or file missing; kdd skips it silently | `check.sh` fails on a missing overlay (except `kdd.local.yaml`) |

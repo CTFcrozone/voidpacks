@@ -27,39 +27,18 @@ model: flash
 # PARAMETERS (edit these; everything below refers to them)
 
 ```
-REALM         = <staging | prod | other>
-CONTEXT       = <kubectl context name>          # unique per realm
+REALM         = staging                   # realm name; also the overlay directory
+CONTEXT       = <kubectl context name>    # unique per realm
 REGISTRY      = <registry host, no trailing slash>
-PROFILE       = <cloud CLI profile, or none>
-YAML_DIR      = <k8s/<name>/>
-MANAGED_DB    = yes | no                        # yes: no in-cluster Postgres in this realm
+PROFILE       = none                      # cloud CLI profile, or none
+INGRESS_HOST  = <hostname>
+REPLICAS      = <number>
+CERT_ISSUER   = <cert-manager ClusterIssuer name>
+DB_CIDR       = <address range of the managed database>
 ```
-
-Resolve every value not listed here from `kdd.yaml` and `environments.md`. Never put real account IDs, ARNs or keys in a committed file: use placeholders in `kdd.yaml` and keep real values in the git-ignored overlay `kdd.local.yaml`.
 
 # TASK
 
-Add the realm `REALM` to the existing project, following `environments.md`. Add only that realm (and `realms._base_` if absent, holding only variables the new manifests use). Do not add, rename or edit any other realm, and do not add unused variables.
+Add the realm `REALM` to this project by reproducing `samples/web-db-staging/` with these parameters, following "Realm reference" in `scaffolding.md` and "Adding a realm" in `environments.md`.
 
-## Files
-
-- `kdd.yaml`: realm `REALM` with `yaml_dir`, `context`, `registry`, `profile` (if any), `confirm_delete: true`. Realm-specific values (replicas, resource sizes, hostnames) as realm variables, not by copying manifests.
-- `YAML_DIR`: manifests derived from the existing dev set. Same file names and numbering; differences only through realm variables or files removed because of `MANAGED_DB`.
-- Manifests use realm variables (`{{replicas}}`, `{{ingress_host}}`, ...) for everything that differs; add safe defaults to `realms._base_`.
-- Production-grade differences per `environments.md`: image reference by digest when the realm requires it, no `latest`, secrets come from the secret store: `YAML_DIR` has no `02-secrets.yaml` and no `REPLACE_ME` anywhere; workloads reference Secrets by the same names as the dev set, and the output checklist lists each Secret name and key the store must provide, TLS terminated at the ingress with a cert issuer reference (no key material in the repo).
-- `.gitignore`: add `kdd.local.yaml` if missing.
-
-## Consistency (see contract.md, lint.md)
-
-- The realm context is unique to the realm. `check.sh REALM` must pass.
-- A human applies to this realm: do not add any script that applies it unattended.
-
-## Output
-
-- List every file created or changed, every assumption, and every value the user must supply (as a checklist).
-- End with exactly: `./check.sh REALM`
-
-====
-> Write your prompt above the `====` line and below the parametric block (the YAML code block).  
-> Press `r` in the terminal to replay this run; the AI response will appear below the `====`.  
-> When `write_mode: true`, the file code block will be extracted and saved to the appropriate files.  
+End with exactly: `./check.sh REALM`

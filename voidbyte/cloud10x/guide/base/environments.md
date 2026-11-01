@@ -55,6 +55,21 @@ realms:
 
 Manifests use `replicas: {{replicas}}` and the limits from variables. `yaml_dir` for staging and production is the dev set with only the differences applied (files removed, for example the in-cluster database when `MANAGED_DB`, and variables substituted).
 
+## Adding a realm
+
+Rules for any agent or human adding a realm to an existing project:
+
+- **Only the new realm, in its own overlay.** The realm lives in `<realm>/kdd-<realm>.yaml`, listed under `overlays:` in `kdd.yaml`; that entry is the only change to `kdd.yaml`. Another realm's block is never edited. Its values stay in the new realm; only variables the manifests use.
+- **Realm values are variables, not copies.** `yaml_dir`, `context` (unique per realm), `registry`, `profile` if any, `confirm_delete: true`; sizes, replicas and hostnames as realm variables referenced as `{{var}}` in manifests.
+- **Manifests derive from the dev set.** Each kept file keeps its exact name and number; removed files leave gaps, never renumber. Differences only through variables or removed files.
+- **Managed database (`MANAGED_DB`).** Remove the in-cluster database and the db-mgmt Job. The managed database and its roles are provisioned out of band; the checklist says so. Keep everything else.
+- **No secret values in non-local realms.** The realm has no secrets manifest and no `REPLACE_ME`. Workloads reference Secrets by the dev set's names; the checklist lists each Secret name and key the store must provide.
+- **Production-grade settings.** No `latest`; own images by digest through a `<block>_digest` realm variable (the zero digest is a placeholder the release pipeline replaces); TLS terminated at the ingress with a cert issuer reference, no key material in the repo.
+- **No real account IDs, ARNs or keys in committed files.** Placeholders in `kdd.yaml`; real values in the git-ignored `kdd.local.yaml` (add it to `.gitignore` if missing).
+- **Nothing applies unattended.** A human or an approved pipeline applies to this realm; add no script that does.
+- **Reference.** `samples/web-db-staging/` is the reference for a managed-database realm (`scaffolding.md`, "Realm reference"). `check.sh` enforces unique contexts, dev-set file names, no `Secret` objects or `REPLACE_ME`, and digest images for every realm with `confirm_delete: true`.
+- **Done means** `./check.sh <realm>` passes and the output lists files changed, assumptions and values the user must supply.
+
 ## Image references by digest
 
 kdd pushes tags (`kdd dpush`). Resolve the digest after the push and give it to the render step as data:

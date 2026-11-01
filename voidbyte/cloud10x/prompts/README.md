@@ -16,7 +16,7 @@ Prompt templates for `pro@coder` with the cloud10x knowledge. The reference proj
 | `scaffold-minimal.md` | Reproduces the verified reference `samples/minimal/` (one hardened Rust service on k3d with KDD) with your parameters. | yes |
 | `scaffold-web-db.md` | Reproduces the reference `samples/web-db/` (web service, PostgreSQL, db-mgmt Job, hardened, alpine) with your parameters. | yes |
 | `add-service.md` | Add one service to an existing project (crate, Dockerfile, manifest, network policy, build/deploy). | yes |
-| `add-realm.md` | Add a staging or production realm per `environments.md`. | yes |
+| `add-realm.md` | Adds a managed-database realm (overlay + manifests) by reproducing `samples/web-db-staging/` with your parameters. | yes |
 | `audit.md` | Read-only review of a project against the pack. Findings only. | no |
 | `upgrade-postgres.md` | Runbook for a PostgreSQL major upgrade, using the project's real names. | one doc |
 
@@ -34,6 +34,16 @@ diff -r . $P/samples/web-db -x .git -x .aipack -x README.md -x check.sh -x lint.
 cp $P/samples/web-app/check.sh $P/samples/web-app/lint.py . && chmod +x check.sh
 cargo generate-lockfile && ./k3d.sh up && ./check.sh && ./k3d.sh build && ./k3d.sh deploy
 ```
+
+A realm prompt is checked the same way. In the project, after the run:
+
+```sh
+diff -r staging $P/samples/web-db-staging/staging
+diff -r k8s/staging $P/samples/web-db-staging/k8s/staging
+git diff kdd.yaml     # exactly one added line under overlays:
+```
+
+With the reference parameters (`staging`, `staging-example`, ...) and a project named like the reference, both diffs are empty. Otherwise the differences are exactly the mapped values and the project's own names.
 
 ## Conventions
 

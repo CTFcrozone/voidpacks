@@ -148,13 +148,14 @@ samples/web-app/
   crates/services/*/Dockerfile   web-server, db-mgmt
 samples/minimal/    reference project (compiled and run in testing); prompts copy it with your parameters
 samples/web-db/     reference project: web-server + PostgreSQL + db-mgmt Job, hardened, network policies
+samples/web-db-staging/  reference realm for it: overlay + manifests, managed database, digest image, TLS
 prompts/            pro@coder prompt templates (not loaded as knowledge)
   scaffold-minimal.md  scaffold-web-db.md  add-service.md  add-realm.md  audit.md  upgrade-postgres.md
 ```
 
 ## Conventions
 
-- Reference projects (`samples/minimal/`, `samples/web-db/`) are followed file for file; names in them are examples.
+- Reference projects (`samples/minimal/`, `samples/web-db/`, `samples/web-db-staging/`) are followed file for file; names in them are examples.
 - Guides are generic; samples are examples. System `rust10x`, namespace `rust10x-web-app` and all versions in samples are placeholders. Real values come from the user or project (`parameters.md`).
 - Secrets in samples are `REPLACE_ME` placeholders. Never commit real values.
 - `guide/base/kdd.md` is derived from the `kdd` source (CLI, loader, realm, docker, ktemplate, builders). Where behavior is not in the source, it is not asserted.

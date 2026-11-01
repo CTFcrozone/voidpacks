@@ -33,6 +33,69 @@ PY
 )
 fi
 
+# realm rules (environments.md "Adding a realm"): contexts unique; every realm with confirm_delete: true
+# keeps only file names of the dev set, has no secret values or Secret objects, and uses digests for own images.
+if python3 -c 'import yaml' 2>/dev/null; then
+	python3 - <<'PY' || fail=1
+import os, re, sys, yaml
+
+def head(p):
+    return yaml.safe_load(re.split(r"(?m)^---.*$", open(p).read())[0]) or {}
+
+bad = 0
+def b(m):
+    global bad
+    bad = 1
+    print("FAIL: " + m, file=sys.stderr)
+
+main = {}
+for doc in yaml.safe_load_all(open("kdd.yaml")):   # overlays sit in the first document, realms in a later one
+    main.update(doc or {})
+realms = dict(main.get("realms") or {})
+ov = main.get("overlays") or []
+for o in ([ov] if isinstance(ov, str) else ov):
+    if os.path.isfile(o):
+        realms.update(head(o).get("realms") or {})
+realms.pop("_base_", None)
+
+def files(d):
+    return sorted(f for f in os.listdir(d) if not f.startswith(".")) if d and os.path.isdir(d) else None
+
+seen = {}
+for n, r in realms.items():
+    c = r.get("context")
+    if c in seen:
+        b("realms %s and %s share context %s" % (seen[c], n, c))
+    seen[c] = n
+
+dev = set()
+for n, r in realms.items():
+    if not r.get("confirm_delete"):
+        dev |= set(files(r.get("yaml_dir")) or [])
+system = main.get("system")
+for n, r in realms.items():
+    if not r.get("confirm_delete"):
+        continue
+    d = r.get("yaml_dir")
+    fs = files(d)
+    if fs is None:
+        b("realm %s: yaml_dir %s not found" % (n, d))
+        continue
+    for f in fs:
+        if dev and f not in dev:
+            b("realm %s: %s%s is not a dev-set file name (kept files keep name and number)" % (n, d, f))
+        t = open(os.path.join(d, f)).read()
+        if "REPLACE_ME" in t:
+            b("realm %s: %s%s has REPLACE_ME (secrets come from the store)" % (n, d, f))
+        if re.search(r"(?m)^kind: Secret\s*$", t):
+            b("realm %s: %s%s defines a Secret object" % (n, d, f))
+        for m in re.finditer(r'(?m)^\s*image:\s*"?([^"\s]+)', t):
+            if re.search(r"/(%s|{{system}})-" % re.escape(str(system)), m.group(1)) and "@" not in m.group(1):
+                b("realm %s: %s%s image %s must be a digest reference" % (n, d, f, m.group(1)))
+sys.exit(bad)
+PY
+fi
+
 # k3d.sh constants must agree with the kdd.yaml realm (cluster, registry host and port)
 if [ -f k3d.sh ]; then
 	K_CLUSTER="$(sed -n 's/^CLUSTER=//p' k3d.sh | head -n1)"
