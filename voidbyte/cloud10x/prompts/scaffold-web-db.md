@@ -37,30 +37,12 @@ REALM         = dev_k3d
 INGRESS_HOST  = api.rust10x.local
 RUST          = latest              # latest | <exact version>
 BASE_OS       = alpine
-PG_MAJOR      = <number>            # PostgreSQL major, pinned in the manifests
+PG_MAJOR      = <number>            # PostgreSQL major, e.g. 18; pinned in the manifests
 ```
 
 # TASK
 
-Scaffold a web service with PostgreSQL and a db-mgmt Job, following `scaffolding.md`: `web-server` from `samples/minimal/`, the database parts from `samples/web-app/k8s/dev_k3s/` and `database.md`. Scope is exactly three workloads:
-
-1. `db` - PostgreSQL `PG_MAJOR` (alpine variant), StatefulSet with `volumeClaimTemplates`, volume at `/var/lib/postgresql`.
-2. `db-mgmt` - one-shot Job that creates the app database and `app_user` using the admin secret.
-3. `web-server` - the reference service extended with a database pool.
-
-Do NOT add: Valkey, queues, workers, extra services, Helm, Kustomize, service mesh, cert-manager, monitoring.
-
-## Application facts
-
-- `web-server` (axum, tokio, sqlx, tracing): `GET /health` (200, no DB), `GET /ready` (`SELECT 1`, 503 on failure), `GET /` (name + version). Fixed port 8081. Env: `SERVICE_DB_URL`, `RUST_LOG`.
-- `db-mgmt` (tokio, sqlx): env `SERVICE_PG_ROOT_URL` (admin), `SERVICE_DB_APP_PASSWORD`. Idempotently creates role `app_user` (LOGIN, password from env) and database `app_db` owned by it; `CREATE DATABASE` outside a transaction. Never logs secrets. Non-zero exit on failure.
-- `sqlx` with `default-features = false, features = ["runtime-tokio", "tls-rustls", "postgres", "macros"]`; no OpenSSL. Workspace members: `web-server`, `db-mgmt`.
-- `SERVICE_DB_URL` targets `app_db` as `app_user` through the `<SYSTEM>-db` Service.
-- Manifests under `k8s/dev_k3s/`: `00-namespace`, `01-config`, `02-secrets`, `03-postgres`, `04-db-mgmt-job`, `05-web-server`, `06-ingress`, `07-network-policy`. Blocks in `kdd.yaml`: `db`, `db-mgmt`, `web-server`. `k3d.sh` builds both images and deploys in stages (secrets and Postgres, then the db-mgmt Job recreated each deploy, then the web-server).
-- Secrets: `postgres-secret` (superuser), `db-admin-secret` (db-mgmt only), `db-secret` (app user, web-server). Values `REPLACE_ME`.
-- Postgres runs as the image's postgres uid/gid (70 on alpine) with matching `fsGroup`; writable paths via `emptyDir` (`/tmp`, `/var/run/postgresql`).
-- NetworkPolicy (default-deny, then both-sided allows on pod ports): ingress controller to web-server; web-server to db 5432 and DNS; db ingress from web-server and db-mgmt only; db-mgmt to db 5432 and DNS.
-- Web-server: 2 replicas, PodDisruptionBudget `minAvailable: 1`.
+Scaffold the web service with PostgreSQL and a db-mgmt Job from the reference `samples/web-db/`, following `scaffolding.md`. Scope is exactly its three workloads: `db`, `db-mgmt`, `web-server`.
 
 ====
 > Write your prompt above the `====` line and below the parametric block (the YAML code block).  

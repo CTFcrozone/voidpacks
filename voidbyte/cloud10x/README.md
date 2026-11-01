@@ -22,7 +22,7 @@ No dedicated agent is shipped: `pro@coder` with this knowledge authors and revie
 
 ## Reference projects
 
-`samples/minimal/` is the smallest complete project: one hardened Rust service on k3d with kdd. It compiles, runs and passes `check.sh` and `lint.py` as shipped. The scaffold prompts reproduce it with your parameters instead of designing from scratch; that is what keeps the output consistent. `samples/web-app/` shows the fuller system (database, Job, network policies).
+`samples/minimal/` is the smallest complete project: one hardened Rust service on k3d with kdd. It compiles, runs and passes `check.sh` and `lint.py` as shipped. The scaffold prompts reproduce it with your parameters instead of designing from scratch; that is what keeps the output consistent. `samples/web-db/` adds PostgreSQL, a db-mgmt Job and network policies to it (compiled, run against a real PostgreSQL, rendered, linted and checked in testing). `samples/web-app/` is the older, broader example (minikube track, Valkey) and holds the canonical `check.sh` and `lint.py`.
 
 ## Writing prompts for this pack
 
@@ -136,7 +136,6 @@ guide/base/
   database.md       PostgreSQL, db-mgmt job, drop-based upgrades, backups
   valkey.md         queues, streams, pub/sub, cache
   environments.md   dev/staging/prod realms, promotion, digests, rollback
-  ci.md             CI gates and rules
 samples/web-app/
   kdd.yaml          KDD config (minikube realm + k3d realm)
   kdd.overlay.example.yaml   staging and prod realms (placeholders)
@@ -148,15 +147,14 @@ samples/web-app/
   .gitignore        kdd .out/ and local overlay
   crates/services/*/Dockerfile   web-server, db-mgmt
 samples/minimal/    reference project (compiled and run in testing); prompts copy it with your parameters
-samples/ci/
-  github-actions.yml   reference pipeline
+samples/web-db/     reference project: web-server + PostgreSQL + db-mgmt Job, hardened, network policies
 prompts/            pro@coder prompt templates (not loaded as knowledge)
   scaffold-minimal.md  scaffold-web-db.md  add-service.md  add-realm.md  audit.md  upgrade-postgres.md
 ```
 
 ## Conventions
 
-- Reference projects (`samples/minimal/`) are followed file for file; names in them are examples.
+- Reference projects (`samples/minimal/`, `samples/web-db/`) are followed file for file; names in them are examples.
 - Guides are generic; samples are examples. System `rust10x`, namespace `rust10x-web-app` and all versions in samples are placeholders. Real values come from the user or project (`parameters.md`).
 - Secrets in samples are `REPLACE_ME` placeholders. Never commit real values.
 - `guide/base/kdd.md` is derived from the `kdd` source (CLI, loader, realm, docker, ktemplate, builders). Where behavior is not in the source, it is not asserted.

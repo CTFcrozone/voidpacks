@@ -70,9 +70,11 @@ for f in "$OUT"/*.yaml; do
 done
 grep -rhn 'run:' "$OUT" | grep -v "\"\?${SYSTEM}-" && bad "run label not prefixed with system '$SYSTEM'"
 
-# every env var read in code must exist in the manifests
+# every env var read in code must be set in the manifests: a ConfigMap/Secret key or an env name.
+# Comments do not count.
 for v in $(grep -rhoE 'env::var\("[A-Z_]+"\)|std::env::var\("[A-Z_]+"\)' crates | sed 's/.*("\(.*\)")/\1/' | sort -u); do
-	grep -rq "$v" "$OUT" || bad "env var $v used in code but not set in manifests"
+	grep -rhv '^[[:space:]]*#' "$OUT" | grep -Eq "(^|[[:space:]\"-])${v}\"?:|name: *\"?${v}\"?([[:space:]]|\$)" \
+		|| bad "env var $v used in code but not set in manifests"
 done
 
 # scripts must not mask failures

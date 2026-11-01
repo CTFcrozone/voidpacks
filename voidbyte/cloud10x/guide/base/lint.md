@@ -41,8 +41,8 @@ metadata:
     lint.cloud10x/skip: "ctr-probes"   # one-shot tool, no long-running health
 ```
 
-Waived findings are printed as `WAIVED` on every run, so they stay visible in CI. Do not waive `pod-non-root`, `ctr-drop-all` or `netpol-default-deny` to make a build pass; change the manifest.
+Waived findings are printed as `WAIVED` on every run, so they stay visible on every run. Do not waive `pod-non-root`, `ctr-drop-all` or `netpol-default-deny` to make a build pass; change the manifest.
 
 ## Scope
 
-The linter checks structure, not behavior. It does not prove a NetworkPolicy allows the right ports, that a Secret holds good values, or that an image is free of CVEs. Those need a cluster test, a secrets process and an image scanner (see `ci.md`).
+The linter checks structure, not behavior. It does not prove a NetworkPolicy allows the right ports, that a Secret holds good values, or that an image is free of CVEs. Those need a cluster test, a secrets process and an image scanner.

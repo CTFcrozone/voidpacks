@@ -15,7 +15,6 @@ context_globs:
   - "crates/**/*.*"
   - "crates/**/Dockerfile"
   - "k8s/**/*.*"
-  - ".github/**/*.*"
 
 ## Set to false to disable file writing (response below this file's prompt)
 write_mode: false

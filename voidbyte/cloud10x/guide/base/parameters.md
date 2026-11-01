@@ -4,7 +4,7 @@ Rules in this pack are generic. Concrete names and versions in guides and sample
 
 ## Precedence
 
-When two sources disagree: user parameters, then the reference projects (`samples/minimal/`, `samples/web-app/`), then guide text, then snippets in guides. Reference projects are verified; snippets are illustrations. If a reference and a snippet differ, follow the reference.
+When two sources disagree: user parameters, then the reference projects (`samples/minimal/`, `samples/web-db/`, `samples/web-app/`), then guide text, then snippets in guides. Reference projects are verified; snippets are illustrations. If a reference and a snippet differ, follow the reference.
 
 ## Resolution order
 

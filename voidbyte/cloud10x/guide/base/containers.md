@@ -71,7 +71,7 @@ EXPOSE 6379
 
 - `{registry}/{system}-{block}:{image_tag}` (see `kdd.md`). Tag = application version.
 - Never `latest`. Production tags are immutable; enforce in the registry.
-- Enterprise: scan images in CI, generate an SBOM, sign images (cosign) and verify at admission.
+- Enterprise: scan images before release, generate an SBOM, sign images (cosign) and verify at admission.
 
 ## Dev fast loop (minikube only)
 

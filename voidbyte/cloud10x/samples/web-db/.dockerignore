@@ -1,0 +1,5 @@
+target/
+.git/
+.aipack/
+k8s/
+*.md

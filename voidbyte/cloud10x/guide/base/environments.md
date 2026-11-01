@@ -73,7 +73,7 @@ image: "{{registry}}/{{system}}-web-server@{{web_server_digest}}"
 
 ## Promotion flow
 
-1. Merge to main. CI runs format, lint, tests, dependency audit, `check.sh`, manifest validation (`ci.md`).
+1. Merge to main. CI runs format, lint, tests, dependency audit, `check.sh`, manifest validation.
 2. CI builds images once, scans, signs, pushes the version tag and records digests in `release.json`.
 3. Staging: CI applies after approval. Database changes ship as a drop (`database.md`), rehearsed on a restored copy.
 4. Smoke tests on staging (`/health`, `/ready`, one business flow).

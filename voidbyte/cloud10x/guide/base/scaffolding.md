@@ -4,7 +4,7 @@ Applies to every scaffold prompt. A prompt carries only the parameters, the scop
 
 ## Method
 
-1. Start from a reference project: `samples/minimal/` (one service) or `samples/minimal/` plus the database parts of `samples/web-app/` (service, PostgreSQL, db-mgmt Job).
+1. Start from a reference project: `samples/minimal/` (one service) or `samples/web-db/` (service, PostgreSQL, db-mgmt Job).
 2. Reproduce it with the parameters applied. Do not design, improve, reformat or reorder.
 3. Precedence when sources disagree: user parameters, then the reference projects, then guide text, then guide snippets (`parameters.md`).
 4. Run the self-check below before answering.
@@ -21,9 +21,9 @@ Applies to every scaffold prompt. A prompt carries only the parameters, the scop
 | `INGRESS_HOST` | ingress hostname | `api.rust10x.local` |
 | `RUST` | `latest` or an exact version | `latest` |
 | `BASE_OS` | runtime base; the reference supports `alpine` only | `alpine` |
-| `PG_MAJOR` | PostgreSQL major, always pinned (database scaffolds) | none |
+| `PG_MAJOR` | PostgreSQL major, always pinned (`samples/web-db/` only) | `18` |
 
-## Value mapping for `samples/minimal/`
+## Value mapping (`samples/minimal/` and `samples/web-db/`)
 
 Replace every occurrence of the reference value with the parameter value, in every file, and change nothing else. Apply the rows in this order.
 
@@ -36,6 +36,7 @@ Replace every occurrence of the reference value with the parameter value, in eve
 | `5000` in `REG_PORT` and `registry:` | `REG_PORT` |
 | `dev_k3d` | `REALM` |
 | `1-alpine` (`ARG RUST_TAG`) | `1-alpine` for `RUST=latest`, otherwise `<RUST>-alpine` |
+| `postgres:18-alpine` (`samples/web-db/` only) | `postgres:<PG_MAJOR>-alpine` |
 
 The fixed `localhost:5000` in the `docker build` tag stays: it is kdd's local prefix, not the registry port.
 
@@ -71,7 +72,7 @@ k8s/
 - Files: exactly those in the reference project, plus `check.sh` and `lint.py` copied byte for byte from `samples/web-app/`.
 - Every Dockerfile is the reference Dockerfile verbatim, comments included; only the crate name changes for another binary. No other layout applies.
 - Same paths, code, comments, ports, labels, security settings and structure. `version = "0.1.0"` stays a literal on its own line.
-- Database scaffolds: drop everything about Valkey, queues and the `queue` block; keep every convention of the reference; add only what the requested workloads need.
+- Database scaffolds are `samples/web-db/`: same files, same names, nothing added (no Valkey, queues, workers).
 - If a parameter value is unsupported (`BASE_OS` other than `alpine`, `RUST` neither `latest` nor a version), write nothing and say so.
 
 ## Self-check
