@@ -58,9 +58,34 @@ Replace every occurrence of the reference value with the parameter value, in eve
 
 Apply `rust10x-web-app` before `rust10x`. The fixed `localhost:5000` in the `docker build` tag stays (kdd's local prefix).
 
+## Dotfiles (create with exactly this content; globs may hide them from you)
+
+`.gitignore`:
+
+```
+# kdd rendered manifests
+k8s/*/.out/
+
+# machine-specific kdd realms (overlay)
+kdd.local.yaml
+
+target/
+.aipack/
+```
+
+`.dockerignore`:
+
+```
+target/
+.git/
+.aipack/
+k8s/
+*.md
+```
+
 ## Rules
 
-- Files: exactly those in `samples/minimal/` (including `.gitignore`, `.dockerignore`), plus `check.sh` and `lint.py` copied byte for byte from `samples/web-app/`.
+- Files: exactly those in `samples/minimal/` (its two dotfiles are given above), plus `check.sh` and `lint.py` copied byte for byte from `samples/web-app/`.
 - Same paths, same code, same comments, same ports (8081), labels, security settings and structure.
 - `version = "0.1.0"` stays a literal on its own line.
 - If `BASE_OS` is not `alpine`, or `RUST` is neither `latest` nor a version, write nothing and say so.

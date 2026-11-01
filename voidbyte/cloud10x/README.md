@@ -20,6 +20,10 @@ knowledge_globs:
 
 No dedicated agent is shipped: `pro@coder` with this knowledge authors and reviews `kdd.yaml`, Dockerfiles and manifests. Executing `kdd` / `kubectl` against clusters stays a human action.
 
+## Reference projects
+
+`samples/minimal/` is the smallest complete project: one hardened Rust service on k3d with kdd. It compiles, runs and passes `check.sh` and `lint.py` as shipped. The scaffold prompts reproduce it with your parameters instead of designing from scratch; that is what keeps the output consistent. `samples/web-app/` shows the fuller system (database, Job, network policies).
+
 ## Writing prompts for this pack
 
 Ready-made templates are in `prompts/` (scaffold, add a service, add a realm, audit, PostgreSQL upgrade runbook). Copy one, edit its parameters, run it. To write your own, follow this section.
@@ -130,6 +134,7 @@ Do NOT add: <extra services, tools, or features that must not appear>.
 
 ## Output
 
+- <Self-check the model can do without tools: list each env var the code reads and the manifest line that sets it.>
 - List every file created and every assumption (ports, env names, which default each unresolved parameter used).
 - If something required is missing, state it instead of guessing.
 - End with exactly: `<commands to run next>` (cluster first, then `./check.sh`, then build: kdd needs the cluster context).
@@ -169,6 +174,7 @@ samples/web-app/
   k3d.sh            build, push, staged apply with kdd (realm dev_k3d)
   .gitignore        kdd .out/ and local overlay
   crates/services/*/Dockerfile   web-server, db-mgmt
+samples/minimal/    reference project (compiled and run in testing); prompts copy it with your parameters
 samples/ci/
   github-actions.yml   reference pipeline
 prompts/            pro@coder prompt templates (not loaded as knowledge)
@@ -177,6 +183,7 @@ prompts/            pro@coder prompt templates (not loaded as knowledge)
 
 ## Conventions
 
+- Reference projects (`samples/minimal/`) are followed file for file; names in them are examples.
 - Guides are generic; samples are examples. System `rust10x`, namespace `rust10x-web-app` and all versions in samples are placeholders. Real values come from the user or project (`parameters.md`).
 - Secrets in samples are `REPLACE_ME` placeholders. Never commit real values.
 - `guide/base/kdd.md` is derived from the `kdd` source (CLI, loader, realm, docker, ktemplate, builders). Where behavior is not in the source, it is not asserted.
