@@ -45,7 +45,7 @@ Runbook sections, in order:
 
 1. Parameters and context (the real names, `BACKUP_STORE` as `DUMP`).
 2. Preconditions: the two commands from `database.md` with the real names, the maintenance window, extension and driver (sqlx) compatibility for `TO_MAJOR`. If `DOWNTIME_OK` is `no`, write only "Open questions" explaining that this procedure needs downtime, and stop.
-3. How to run (save the variables block and each phase as files, run with `bash -c 'source vars.sh; source phaseX.sh'`, never paste a phase into an interactive shell; commit the image change only after the cutover is verified), then the Variables block, Phase A, Phase B and Phase C, each in its own code block with a one-line purpose.
+3. How to run: the extraction command and run line from `database.md` (with the runbook's real file path), the rule never to paste a phase into an interactive shell, and to commit the image change only after the cutover is verified. Then the Variables block, Phase A, Phase B and Phase C, each in its own code block **keeping the fence label** (` ```sh vars.sh `, ` ```sh phaseA.sh `, ` ```sh phaseB.sh `, ` ```sh phaseC.sh `) and a one-line purpose. Every other shell block in the runbook uses a plain ` ```sh ` fence with no label.
 4. Verification after phase B: `/health` and `/ready` return `200 OK` with body `ok` (use the project's ingress host), plus one business request.
 5. Manifest change: quote the real `image:` line from the project's `03-postgres` manifest and the line it becomes (`FROM_MAJOR` replaced by `TO_MAJOR`, same variant). Phase B applies this edit with `sed`; say so.
 6. Open questions and assumptions.

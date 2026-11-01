@@ -111,7 +111,7 @@ Rules:
 
 Drops (above) change the schema. A **major version** change (18 to 19) is different: PostgreSQL refuses to start a new major on a data directory initialized by the old one, so bumping the image on the existing volume crash-loops the pod. The volume must be recreated and the data restored from a dump.
 
-The scripts below are the procedure. A runbook copies them verbatim and changes only the values in the variables block. Tested: the dump, gating, restore, ownership, row counts and rollback flow ran against a real PostgreSQL server with a stubbed `kubectl`/`kdd`, including a failing dump that aborts before anything is deleted. Not tested: a live cluster (PVC deletion, the old-volume crash-loop, pod scheduling).
+The scripts below are the procedure. A runbook copies them verbatim and changes only the values in the variables block. Tested on a k3d cluster with a same-major run (18 to 18, 500 rows owned by `app_user`): rehearsal, cutover (StatefulSet and PVC recreated, db-mgmt, restore, counts identical, `/ready` 200) and rollback. The gating (failing dump, missing image, empty database, count mismatch) was tested against a real PostgreSQL server with a stubbed `kubectl`/`kdd`. Not tested: an actual major-version change (the target image did not exist when this was written) and the old-volume crash-loop it prevents.
 
 Rules:
 
@@ -129,6 +129,16 @@ Rules:
 - Rehearsal needs no NetworkPolicy change: its pods are not selected by the allow rules, and `kubectl exec` does not use the network. Smoke-testing the application against it is optional and needs a temporary config and allow rule.
 - After phase B starts, a failure at or after the PVC deletion is recovered from `$DUMP` (verified); do not re-run phase A.
 
+Extraction: the four fences are labeled with their file names (` ```sh vars.sh `, ` ```sh phaseA.sh `, ...). A runbook keeps the labels and tells the operator to extract them from the runbook itself, so no block numbering is involved:
+
+```sh
+mkdir -p /tmp/pgupgrade && cd /tmp/pgupgrade
+awk '/^```sh [A-Za-z]+\.sh$/{f=$2; next} /^```/{f=""; next} f{print > f}' <path-to-runbook>.md
+ls   # vars.sh phaseA.sh phaseB.sh phaseC.sh
+```
+
+Run each phase from the project root: `cd <project> && bash -c 'source /tmp/pgupgrade/vars.sh; source /tmp/pgupgrade/phaseA.sh'`.
+
 Preconditions (run, read the output):
 
 ```sh
@@ -138,7 +148,7 @@ docker manifest inspect postgres:TO-<variant> >/dev/null && echo exists
 
 Variables (values come from the project's manifests; the names below are the sample's):
 
-```sh
+```sh vars.sh
 NS=rust10x-web-app
 SYS=rust10x
 STS=$SYS-db
@@ -161,7 +171,7 @@ SQL
 
 Phase A - backup and rehearsal (no production change; leaves the rehearsal instance running):
 
-```sh
+```sh phaseA.sh
 set -euo pipefail
 # A. Backup and rehearsal. Changes nothing in production. Leaves the rehearsal instance running.
 IMG=$(grep -oE "postgres:$FROM[^\"[:space:]]*" "$SRC/03-postgres.yaml" | head -1); test -n "$IMG"
@@ -188,7 +198,7 @@ echo "rehearsal OK: dump restores on postgres $TO with identical row counts"
 
 Phase B - cutover (downtime):
 
-```sh
+```sh phaseB.sh
 set -euo pipefail
 # B. Cutover. Requires phase A (rehearsal instance still running). Downtime starts here.
 REPLICAS=$($K get "deployment/$WEB" -o jsonpath='{.spec.replicas}')
@@ -223,7 +233,7 @@ Then verify: `curl -i http://<ingress-host>/health` and `/ready` both return `20
 
 Phase C - rollback to `FROM` (writes made on `TO` are lost; decide before the window):
 
-```sh
+```sh phaseC.sh
 set -euo pipefail
 # C. Rollback to $FROM from the verified dump. Writers must be stopped; writes made on $TO are lost.
 REPLICAS=$($K get "deployment/$WEB" -o jsonpath='{.spec.replicas}')
