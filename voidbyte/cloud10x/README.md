@@ -128,6 +128,8 @@ guide/base/
   kdd.md            kdd.yaml schema, commands, conventions   (start here)
   parameters.md     what is a parameter, how values/versions are resolved (generic rules)
   contract.md       single sources of truth for names/versions, known failure modes
+  audit.md          read-only project audit: scope, rules, output format
+  services.md       adding a service to a project: rules, files, answer format
   scaffolding.md    method, parameters, value mapping, rules, self-check (shared by all scaffold prompts)
   architecture.md   layers, service placement, messaging
   containers.md     Dockerfile, entrypoint, image tagging, dev fast loop
@@ -140,7 +142,7 @@ samples/web-app/
   kdd.yaml          KDD config (minikube realm + k3d realm)
   kdd.overlay.example.yaml   staging and prod realms (placeholders)
   k8s/dev/          KDD track: flat, block-named, templated manifests
-  k8s/dev_k3s/      k3d/k3s track: numbered, namespaced, hardened manifests
+  k8s/dev_k3d/      k3d/k3s track: numbered, namespaced, hardened manifests
   check.sh          consistency check (versions, images, labels, env vars, registry/cluster) + lint
   lint.py           hardening linter for rendered manifests (needs PyYAML)
   k3d.sh            build, push, staged apply with kdd (realm dev_k3d)
@@ -164,7 +166,7 @@ prompts/            pro@coder prompt templates (not loaded as knowledge)
 
 Licensed under either of
 
-- Apache License, Version 2.0 ([LICENSE-APACHE](../../LICENSE-APACHE))
-- MIT license ([LICENSE-MIT](../../LICENSE-MIT))
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE))
+- MIT license ([LICENSE-MIT](LICENSE-MIT))
 
 at your option. Unless you state otherwise, any contribution you intentionally submit for inclusion in this work, as defined in the Apache-2.0 license, is dual licensed as above, without any additional terms or conditions.

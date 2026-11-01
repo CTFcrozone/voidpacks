@@ -34,7 +34,7 @@ Replace every occurrence of the reference value with the parameter value, in eve
 | `rust10x` (system name, everywhere else) | `SYSTEM` |
 | `cloudapp` | `CLUSTER` |
 | `5000` in `REG_PORT` and `registry:` | `REG_PORT` |
-| `dev_k3d` | `REALM` |
+| `dev_k3d` (realm name and the manifest directory `k8s/dev_k3d/`) | `REALM` |
 | `1-alpine` (`ARG RUST_TAG`) | `1-alpine` for `RUST=latest`, otherwise `<RUST>-alpine` |
 | `postgres:18-alpine` (`samples/web-db/` only) | `postgres:<PG_MAJOR>-alpine` |
 

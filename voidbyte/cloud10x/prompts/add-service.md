@@ -40,35 +40,9 @@ Resolve every value not listed here from the existing project, then `parameters.
 
 # TASK
 
-Add one service `BLOCK` to the existing project. Read `kdd.yaml`, `k3d.sh`, the existing manifests and the existing crate first; match their conventions exactly (system, namespace, realm, numbering, label style). Change only what the new service requires.
+Add the service `BLOCK` to this project per `services.md`.
 
-## Rust code
-
-- New crate `crates/services/BLOCK` (workspace member), modeled on the existing web-server crate: routes `GET /health`, optional `GET /ready` (only if `NEEDS_DB`).
-- Dependencies are crates.io crates only. Reuse the workspace's existing dependency versions and TLS policy (rustls).
-- Env var names: copy the style of existing services; list every one.
-
-## Files
-
-- `kdd.yaml`: add block `BLOCK`. Do not change realms.
-- `crates/services/BLOCK/Dockerfile`: same pattern as the existing service Dockerfiles (`ARG RUST_TAG`).
-- `k8s/<yaml_dir>/`: a new numbered manifest for `BLOCK` using the next free number after the existing files, placed so it applies after its dependencies. Do not renumber existing files. Service, Deployment, ServiceAccount, PodDisruptionBudget if replicas > 1.
-- `k3d.sh`: add `BLOCK` to the build list and to the deploy stages, gated by `kubectl rollout status`.
-- Existing `07-network-policy`-style file: add allow rules with BOTH sides on pod ports: ingress to `BLOCK` from its callers, egress from `BLOCK` to its dependencies and DNS. If `EXPOSED`, allow the ingress controller and extend the Ingress.
-- Existing secrets/config: add new env vars explicitly (every env var the code reads is set in the manifests).
-
-## Consistency (see contract.md, lint.md)
-
-- Pod label `run: "{{system}}-BLOCK"`. Image `"{{registry}}/{{system}}-BLOCK:{{image_tag}}"`.
-- All hardening rules apply (non-root, read-only root, drop ALL, probes, resources, dedicated ServiceAccount).
-- Do not write manifests that fail `check.sh`.
-
-## Output
-
-- Before finishing, list each env var the code reads and the exact manifest line that sets it. Fix any gap before answering.
-- List every file created and every file modified, with a one-line reason each.
-- List assumptions. If something required is missing, state it instead of guessing.
-- End with exactly: `cargo check --workspace --locked && ./check.sh && ./k3d.sh build && ./k3d.sh deploy`
+End with exactly: `cargo generate-lockfile && cargo clippy --workspace --locked --all-targets -- -D warnings && ./check.sh && ./k3d.sh build && ./k3d.sh deploy`
 
 ====
 > Write your prompt above the `====` line and below the parametric block (the YAML code block).  

@@ -7,7 +7,7 @@ Rules for manifests in a KDD system. Full reference manifests: `samples/web-app/
 | Track | Directory | Shape |
 |-------|-----------|-------|
 | Per-block (minikube) | `k8s/dev/` | One file per block (`db.yaml`, `queue.yaml`, `web-server.yaml`) plus `_`-prefixed shared files. `default` namespace. Applied by `kdd kapply`. |
-| Numbered (k3d / k3s / shared clusters) | `k8s/dev_k3s/` | Numbered files, dedicated namespace. Applied in stages by `kdd kapply <names>` (`k3d.sh`). |
+| Numbered (k3d / k3s / shared clusters) | `k8s/<realm>/` (references: `k8s/dev_k3d/`) | Numbered files, dedicated namespace. Applied in stages by `kdd kapply <names>` (`k3d.sh`). |
 
 Both tracks are flat (kdd does not recurse) and templated (`{{registry}}`, `{{system}}`, `{{image_tag}}`). Numbered order (file stems sort lexically = apply order):
 

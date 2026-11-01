@@ -23,4 +23,4 @@ Values the operator supplies (examples here: `staging-example`, `registry.exampl
 - a cert-manager ClusterIssuer named `cert_issuer`, and DNS for `ingress_host`;
 - the image digests of the build being deployed (`web_server_digest`).
 
-Verified in testing: the rendered set passes `lint.py` (11 objects, 0 findings) and the realm rules of `check.sh` (six deliberate violations each fail). Not verified: a deploy to a real cluster.
+Verified in testing: `./check.sh staging` against real kdd renders the realm and passes `lint.py` (11 objects, 0 findings); the realm rules of `check.sh` catch six deliberate violations. Not verified: a deploy to a real cluster.

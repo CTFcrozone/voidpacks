@@ -17,6 +17,24 @@ try:
 except ImportError:
     sys.exit("lint.py needs PyYAML (pacman -S python-yaml | apt install python3-yaml)")
 
+class StrictLoader(yaml.SafeLoader):
+    """SafeLoader that rejects duplicate mapping keys. Two YAML documents merged by a lost `---`
+    would otherwise collapse silently (last key wins) and drop an object."""
+
+
+def _strict_map(loader, node, deep=False):
+    seen = set()
+    for knode, _ in node.value:
+        key = loader.construct_object(knode, deep=True)
+        if key in seen:
+            raise yaml.constructor.ConstructorError(
+                None, None, "duplicate key %r (a lost '---' separator merges two documents)" % (key,), knode.start_mark)
+        seen.add(key)
+    return yaml.SafeLoader.construct_mapping(loader, node, deep)
+
+
+StrictLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _strict_map)
+
 RULES = {
     "pod-non-root": "runAsNonRoot: true (pod or every container)",
     "pod-explicit-uid": "runAsUser set and non-zero (pod or every container)",
@@ -147,7 +165,7 @@ def main(argv):
     for f in sorted(glob.glob(os.path.join(argv[0], "*.yaml"))):
         try:
             with open(f) as fh:
-                objs += [d for d in yaml.safe_load_all(fh) if isinstance(d, dict) and d.get("kind")]
+                objs += [d for d in yaml.load_all(fh, Loader=StrictLoader) if isinstance(d, dict) and d.get("kind")]
         except yaml.YAMLError as e:
             print("FAIL   %-20s %s: %s" % ("yaml-parse", os.path.basename(f), str(e).splitlines()[0]))
             return 1

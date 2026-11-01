@@ -3,7 +3,7 @@
 `samples/web-app/lint.py` turns the hardening rules of this pack into a gate. `check.sh` runs it on the rendered manifests (`.out/<realm>/`); it exits non-zero on any finding. Copy `lint.py` and `check.sh` into the project root unchanged.
 
 ```sh
-python3 lint.py k8s/dev_k3s/.out/dev_k3d    # needs PyYAML (pacman -S python-yaml)
+python3 lint.py k8s/dev_k3d/.out/dev_k3d    # needs PyYAML (pacman -S python-yaml)
 python3 lint.py --rules
 ```
 

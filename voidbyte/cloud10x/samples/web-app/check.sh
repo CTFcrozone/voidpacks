@@ -71,6 +71,8 @@ for n, r in realms.items():
 dev = set()
 for n, r in realms.items():
     if not r.get("confirm_delete"):
+        if files(r.get("yaml_dir")) is None:
+            b("realm %s: yaml_dir %s not found (rendered output would be empty)" % (n, r.get("yaml_dir")))
         dev |= set(files(r.get("yaml_dir")) or [])
 system = main.get("system")
 for n, r in realms.items():
@@ -123,7 +125,7 @@ fi
 
 grep -rn '{{\|&#x3D;\|{ workspace' "$OUT" && bad "unresolved template or workspace value in rendered output"
 # images this system builds must carry the system version; third-party images are pinned by lint.py (ctr-image-tag)
-grep -rhn 'image:' "$OUT" | grep "[/\"]${SYSTEM}-" | grep -v ":$VERSION\"" && bad "own image tag != $VERSION"
+grep -rhn 'image:' "$OUT" | grep "[/\"]${SYSTEM}-" | grep -v -e ":$VERSION\"" -e '@sha256:' && bad "own image tag != $VERSION (or not a digest)"
 grep -rhn 'image:.*latest' "$OUT" && bad "latest tag"
 
 for f in "$OUT"/*.yaml; do
@@ -133,12 +135,46 @@ for f in "$OUT"/*.yaml; do
 done
 grep -rhn 'run:' "$OUT" | grep -v "\"\?${SYSTEM}-" && bad "run label not prefixed with system '$SYSTEM'"
 
-# every env var read in code must be set in the manifests: a ConfigMap/Secret key or an env name.
-# Comments do not count.
-for v in $(grep -rhoE 'env::var\("[A-Z_]+"\)|std::env::var\("[A-Z_]+"\)' crates | sed 's/.*("\(.*\)")/\1/' | sort -u); do
-	grep -rhv '^[[:space:]]*#' "$OUT" | grep -Eq "(^|[[:space:]\"-])${v}\"?:|name: *\"?${v}\"?([[:space:]]|\$)" \
-		|| bad "env var $v used in code but not set in manifests"
-done
+# every env var read in code must be set for a workload in the rendered output: a ConfigMap/Secret key or an env name.
+# Blocks that are not deployed in this realm are skipped. Keys of a Secret that is referenced but not defined
+# (it comes from the secret store, environments.md) cannot be seen here and are not reported.
+SYSTEM="$SYSTEM" BASE="$BASE" OUT="$OUT" python3 - <<'PY' || fail=1
+import glob, os, re, sys, yaml
+system, base, out = os.environ["SYSTEM"], os.environ["BASE"], os.environ["OUT"]
+docs = []
+for f in glob.glob(os.path.join(out, "*.yaml")):
+    docs += [d for d in yaml.safe_load_all(open(f)) if isinstance(d, dict)]
+text = "\n".join(open(f).read() for f in glob.glob(os.path.join(out, "*.yaml")))
+present = set(re.findall(r"[/\"]%s-([a-z0-9-]+)[:@]" % re.escape(system), text))
+absent = [os.path.join(base, d) + os.sep for d in os.listdir(base) if os.path.isfile(os.path.join(base, d, "Dockerfile")) and d not in present] if os.path.isdir(base) else []
+names, defined, refs = set(), set(), set()
+def pods(d):
+    spec = d.get("spec") or {}
+    t = (spec.get("template") or {}).get("spec") or (((spec.get("jobTemplate") or {}).get("spec") or {}).get("template") or {}).get("spec") or {}
+    return t.get("containers", []) + t.get("initContainers", [])
+for d in docs:
+    k, md = d.get("kind"), d.get("metadata") or {}
+    if k in ("ConfigMap", "Secret"):
+        names |= set((d.get("data") or {}).keys()) | set((d.get("stringData") or {}).keys())
+        if k == "Secret": defined.add(md.get("name"))
+    for c in pods(d):
+        names |= {e.get("name") for e in c.get("env", [])}
+        for e in c.get("env", []):
+            r = (e.get("valueFrom") or {}).get("secretKeyRef")
+            if r: refs.add(r.get("name"))
+        for e in c.get("envFrom", []):
+            if "secretRef" in e: refs.add(e["secretRef"].get("name"))
+external = bool(refs - defined)
+used = set()
+for f in glob.glob("crates/**/*.rs", recursive=True):
+    if any(f.startswith(a) for a in absent): continue
+    used |= set(re.findall(r'env::var\("([A-Z_0-9]+)"\)', open(f).read()))
+bad = 0
+for v in sorted(used - names):
+    if external: continue
+    print("FAIL: env var %s used in code but not set in manifests" % v, file=sys.stderr); bad = 1
+sys.exit(bad)
+PY
 
 # scripts must not mask failures
 [ -f k3d.sh ] && grep -n '|| true' k3d.sh && bad "k3d.sh masks failures with '|| true' (create only if absent instead)"

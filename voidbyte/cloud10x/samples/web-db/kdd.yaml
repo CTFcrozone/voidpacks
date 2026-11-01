@@ -8,7 +8,7 @@ block_base_dir: crates/services/
 
 realms:
   dev_k3d:
-    yaml_dir: k8s/dev_k3s/
+    yaml_dir: k8s/dev_k3d/
     context: k3d-cloudapp
     registry: k3d-cloudapp-reg.localhost:5000
     confirm_delete: false

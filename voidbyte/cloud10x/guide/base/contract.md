@@ -38,6 +38,8 @@ Each of these happened in a real scaffold. All are checked by `check.sh` / `lint
 | `invalid reference format` on build | empty version: `version.workspace = true`, or a comment after `version = "..."` | literal version on its own line |
 | `ImagePullBackOff` / push to the wrong registry | `REG_NAME` is the system name, not the cluster | `REG_NAME=<CLUSTER>-reg.localhost`; `kdd.yaml` registry derived from it |
 | `cargo` manifest error `invalid unquoted key` | `std::env` listed as a dependency | std/core/alloc are never dependencies |
+| an object is missing after apply (for example a NetworkPolicy) and pods cannot connect | an edit deleted a `---` separator, merging two documents; the later keys overwrite the earlier object | `lint.py` fails on a duplicate key; restore the separator |
+| code change not visible after build and deploy | the image tag is unchanged and the node already holds that tag (versioned tags are pulled `IfNotPresent`), so new pods reuse the cached image; `rollout restart` does not help | bump the version in its single source (`Cargo.toml`), run `cargo generate-lockfile`, then `./k3d.sh build && ./k3d.sh deploy`. Never fix it with `latest` |
 | env var unset at runtime | code reads a variable the manifest never sets | every `env::var` is set explicitly in the manifests |
 | `rustc X is not supported by the following packages` | stale pinned Rust tag | floating `rust:${RUST_TAG}` (`parameters.md`) |
 | cluster half-created, script continues | `\|\| true` on create commands | create only if absent; never mask failures |

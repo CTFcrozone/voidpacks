@@ -156,8 +156,8 @@ PVC=data-$STS-0                      # <volumeClaimTemplates name>-<STS>-<ordina
 WEB=$SYS-web-server
 JOB=$SYS-db-mgmt
 FROM=18; TO=19
-SRC=k8s/dev_k3s                      # source manifests (templates)
-OUT=k8s/dev_k3s/.out/dev_k3d         # rendered by kdd for the current realm
+SRC=k8s/dev_k3d                      # source manifests (templates)
+OUT=k8s/dev_k3d/.out/dev_k3d         # rendered by kdd for the current realm
 DUMP=/tmp/rust10x-pg18-pre-upgrade.dump
 K="kubectl -n $NS"
 die() { echo "FAIL: $*" >&2; exit 1; }
