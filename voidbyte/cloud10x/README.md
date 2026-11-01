@@ -33,13 +33,14 @@ The pack holds the rules. The prompt holds the facts of one project and the scop
 **Structure**
 
 1. **Header:** the pro@coder YAML block with `knowledge_globs` for this pack, `context_globs`, `write_mode: true`, a `model`.
-2. **Parameters:** every name and version the project needs, in one block (system, namespace, cluster, registry, realm, toolchain, base OS, database major). Values you leave out are resolved by `guide/base/parameters.md`.
+2. **Parameters** (names in `scaffolding.md`): every name and version the project needs, in one block (system, namespace, cluster, registry, realm, toolchain, base OS, database major). Values you leave out are resolved by `guide/base/parameters.md`.
 3. **Scope:** exactly what to build and a "do not add" list. Unbounded prompts produce extra services.
 4. **Contract:** the names that must agree across files (env vars, block names, ports). Point at `contract.md` instead of repeating it.
-5. **Output:** ask for a list of created files, a list of assumptions, and the exact commands to run next.
+5. **Nothing else.** Invariant rules, self-checks, value mappings and answer formats belong in the pack (`guide/base/scaffolding.md`), not in every prompt.
 
 **Rules**
 
+- **Keep invariants in the pack.** If every user would have to write the same line, it is a pack rule. A prompt holds parameters, scope and facts about this application.
 - **State facts once.** Refer to parameters by name; never repeat a value in several places.
 - **Say `latest` or a pin explicitly.** Toolchains float by default; databases are always pinned.
 - **Forbid, don't hope.** List what must not appear (extra services, `latest` tags, hard-coded registries, OpenSSL).
@@ -84,60 +85,31 @@ model: <alias>
 SYSTEM        = <name>
 NAMESPACE     = <namespace>
 CLUSTER       = <name>              # k3d cluster -> context k3d-<CLUSTER>
-REGISTRY_PORT = <port>              # registry host k3d-<CLUSTER>-reg.localhost
+REG_PORT      = <port>              # registry host k3d-<CLUSTER>-reg.localhost
 REALM         = <realm>
 INGRESS_HOST  = <host>
-RUST          = latest              # latest | <exact version> | from rust-toolchain.toml
-BASE_OS       = alpine              # alpine | debian
-PG_MAJOR      = latest-stable       # or an explicit number; always pinned in manifests
+RUST          = latest              # latest | <exact version>
+BASE_OS       = alpine
+PG_MAJOR      = <number>            # only for database scaffolds; pinned in manifests
 ```
-
-Resolve every value not listed here per `parameters.md`. Samples in the knowledge are examples: never copy their names or versions.
 
 # TASK
 
-<One paragraph: what to create. State whether the directory is empty. Scope is exactly these workloads and nothing else:>
+<One sentence: what to build, which reference project to start from, and "following `scaffolding.md`".>
+
+Scope is exactly these workloads:
 
 1. `<block>` - <what it is>
 2. `<block>` - <what it is>
 
-Do NOT add: <extra services, tools, or features that must not appear>.
+Do NOT add: <extra services, tools or features that must not appear>.
 
-## Rust code
+## Application facts
 
-- <Workspace layout, edition, dependency rules (crates.io only, no `std` paths), TLS policy.>
-- <Per crate: routes, ports, env var names, behavior.>
-- Env names are the contract: identical in config, secrets, Jobs and Deployments.
-
-## Files
-
-- <Each file or directory to write, with the parameters it uses.>
-- `check.sh`: copy `samples/web-app/check.sh` unchanged; executable.
-
-## Images
-
-- <Base image policy per parameters.md: toolchain floating or pinned, stateful engines pinned, runtime OS, non-root user.>
-- Manifest image refs: `"{{registry}}/{{system}}-<block>:{{image_tag}}"`. Never `latest`, never literal registry or version.
-
-## Hardening (every pod)
-
-- <Pod and container security context, writable paths, probes, resources.>
-- <Secrets layout, replicas, disruption budget.>
-- <NetworkPolicy: default-deny, then both-sided allows on pod ports.>
-
-## Consistency (see contract.md)
-
-- <Version source: literal `version`, never `version.workspace = true`.>
-- <Names defined once; block names identical in blocks, manifests, labels, images, crate dirs.>
-- <Every env var the code reads is set explicitly in the manifests, even when the code has a default.>
-- Do not write manifests that fail `check.sh`.
-
-## Output
-
-- <Self-check the model can do without tools: list each env var the code reads and the manifest line that sets it.>
-- List every file created and every assumption (ports, env names, which default each unresolved parameter used).
-- If something required is missing, state it instead of guessing.
-- End with exactly: `<commands to run next>` (cluster first, then `./check.sh`, then build: kdd needs the cluster context).
+- <Routes, ports and env var names of each service.>
+- <Secrets and their consumers.>
+- <Network flows that must be allowed (both sides, pod ports).>
+- <Anything else specific to this application.>
 
 ====
 ````
@@ -155,7 +127,8 @@ Do NOT add: <extra services, tools, or features that must not appear>.
 guide/base/
   kdd.md            kdd.yaml schema, commands, conventions   (start here)
   parameters.md     what is a parameter, how values/versions are resolved (generic rules)
-  contract.md       single sources of truth for names/versions (read before scaffolding)
+  contract.md       single sources of truth for names/versions, known failure modes
+  scaffolding.md    method, parameters, value mapping, rules, self-check (shared by all scaffold prompts)
   architecture.md   layers, service placement, messaging
   containers.md     Dockerfile, entrypoint, image tagging, dev fast loop
   kubernetes.md     manifests, security, networking, scaling
