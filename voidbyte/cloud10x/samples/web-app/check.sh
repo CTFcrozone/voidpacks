@@ -36,8 +36,16 @@ timeout 60 kdd ktemplate </dev/null || { echo "FAIL: kdd ktemplate" >&2; exit 1;
 OUT="$(ls -d k8s/*/.out/"$REALM" 2>/dev/null | head -n1)"
 [ -d "$OUT" ] || { bad "no rendered output for realm $REALM"; exit 1; }
 
+# hardening rules (lint.py, same directory as this script)
+if python3 -c 'import yaml' 2>/dev/null; then
+	python3 ./lint.py "$OUT" || fail=1
+else
+	bad "PyYAML missing: pacman -S python-yaml (Debian: apt install python3-yaml)"
+fi
+
 grep -rn '{{\|&#x3D;\|{ workspace' "$OUT" && bad "unresolved template or workspace value in rendered output"
-grep -rhn 'image:' "$OUT" | grep -v "postgres:" | grep -v ":$VERSION\"" && bad "image tag != $VERSION"
+# images this system builds must carry the system version; third-party images are pinned by lint.py (ctr-image-tag)
+grep -rhn 'image:' "$OUT" | grep "[/\"]${SYSTEM}-" | grep -v ":$VERSION\"" && bad "own image tag != $VERSION"
 grep -rhn 'image:.*latest' "$OUT" && bad "latest tag"
 
 for f in "$OUT"/*.yaml; do

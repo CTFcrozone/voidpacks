@@ -13,6 +13,8 @@ spec:
         app: rust10x-db-mgmt
         run: "{{system}}-db-mgmt"
     spec:
+      serviceAccountName: rust10x-db-mgmt
+      automountServiceAccountToken: false
       restartPolicy: OnFailure
       securityContext:
         runAsNonRoot: true

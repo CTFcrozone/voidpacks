@@ -169,3 +169,5 @@ Track: request latency (p50/p95/p99), error rate, throughput, CPU/memory, Valkey
 - [ ] Port numbers consistent across Service, Deployment and NetworkPolicy
 - [ ] Default-deny NetworkPolicy with explicit allows for both sides
 - [ ] PDB and HPA on scaled services
+
+The rules in this guide are enforced by `lint.py` (see `lint.md`).

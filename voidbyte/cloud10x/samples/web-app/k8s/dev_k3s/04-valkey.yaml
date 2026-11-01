@@ -26,6 +26,8 @@ spec:
         app: rust10x-valkey
         run: "{{system}}-queue"
     spec:
+      serviceAccountName: rust10x-valkey
+      automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000

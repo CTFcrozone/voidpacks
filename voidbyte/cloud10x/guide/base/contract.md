@@ -24,6 +24,7 @@ Every name and version is defined once and only referenced elsewhere. A scaffold
 - Pod label `run: "{{system}}-<block>"` on every Deployment/StatefulSet/Job pod.
 - Env var names are copied from the code, never invented in manifests.
 - Every env var the code reads is set explicitly in the manifests (ConfigMap or `env:`), even when the code has a default. `check.sh` enforces this.
-- Generate `check.sh` (see `samples/web-app/check.sh`) and run it after `./k3d.sh up` and before any build (kdd needs the cluster context).
+- Copy `check.sh` and `lint.py` (see `samples/web-app/`) into the project root unchanged. `lint.py` enforces the hardening rules (`lint.md`).
+- Run `check.sh` after `./k3d.sh up` and before any build (kdd needs the cluster context).
 - `Cargo.toml` dependencies are crates.io crates (or path/workspace members). `std`, `core`, `alloc` and module paths such as `std::env` are never dependencies.
 - Names and versions in the pack's examples are placeholders; take real values per `parameters.md`.

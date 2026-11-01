@@ -28,6 +28,8 @@ spec:
         app: rust10x-web-server
         run: "{{system}}-web-server"
     spec:
+      serviceAccountName: rust10x-web-server
+      automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001

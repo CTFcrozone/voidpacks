@@ -1,0 +1,21 @@
+# Example overlay with staging and production realms. All values are placeholders.
+# Copy to kdd.local.yaml (git-ignored) and fill in; list it in kdd.yaml under `overlays:`.
+# Overlay realms are merged into kdd.yaml; realms._base_ of kdd.yaml applies to them.
+# Never commit real account IDs, ARNs or registry hostnames in a public repo.
+realms:
+  staging:
+    yaml_dir: k8s/staging/
+    context: <staging-kubectl-context>        # unique per realm
+    registry: <registry-host>                 # no trailing slash
+    confirm_delete: true
+    replicas: 2
+    ingress_host: <staging-host>
+
+  prod:
+    yaml_dir: k8s/prod/
+    context: <prod-kubectl-context>
+    registry: <registry-host>
+    profile: <cloud-cli-profile>              # AWS profile; use `project:` for GCP
+    confirm_delete: true                      # never false outside throwaway clusters
+    replicas: 3
+    ingress_host: <prod-host>

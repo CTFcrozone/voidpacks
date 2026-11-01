@@ -22,6 +22,8 @@ No dedicated agent is shipped: `pro@coder` with this knowledge authors and revie
 
 ## Writing prompts for this pack
 
+Ready-made templates are in `prompts/` (scaffold, add a service, add a realm, audit, PostgreSQL upgrade runbook). Copy one, edit its parameters, run it. To write your own, follow this section.
+
 The pack holds the rules. The prompt holds the facts of one project and the scope of one task. A good prompt is short, parametric and checkable.
 
 **Structure**
@@ -147,21 +149,30 @@ Do NOT add: <extra services, tools, or features that must not appear>.
 ```
 guide/base/
   kdd.md            kdd.yaml schema, commands, conventions   (start here)
+  parameters.md     what is a parameter, how values/versions are resolved (generic rules)
+  contract.md       single sources of truth for names/versions (read before scaffolding)
   architecture.md   layers, service placement, messaging
   containers.md     Dockerfile, entrypoint, image tagging, dev fast loop
   kubernetes.md     manifests, security, networking, scaling
+  lint.md           hardening rules enforced by lint.py, waivers
   database.md       PostgreSQL, db-mgmt job, drop-based upgrades, backups
   valkey.md         queues, streams, pub/sub, cache
-  parameters.md     what is a parameter, how values/versions are resolved (generic rules)
-  contract.md       single sources of truth for names/versions (read before scaffolding)
+  environments.md   dev/staging/prod realms, promotion, digests, rollback
+  ci.md             CI gates and rules
 samples/web-app/
-  kdd.yaml          KDD config (minikube realm)
+  kdd.yaml          KDD config (minikube realm + k3d realm)
+  kdd.overlay.example.yaml   staging and prod realms (placeholders)
   k8s/dev/          KDD track: flat, block-named, templated manifests
   k8s/dev_k3s/      k3d/k3s track: numbered, namespaced, hardened manifests
-  check.sh          consistency check (versions, images, labels, env vars)
+  check.sh          consistency check (versions, images, labels, env vars, registry/cluster) + lint
+  lint.py           hardening linter for rendered manifests (needs PyYAML)
   k3d.sh            build, push, staged apply with kdd (realm dev_k3d)
   .gitignore        kdd .out/ and local overlay
   crates/services/*/Dockerfile   web-server, db-mgmt
+samples/ci/
+  github-actions.yml   reference pipeline
+prompts/            pro@coder prompt templates (not loaded as knowledge)
+  scaffold-minimal.md  scaffold-web-db.md  add-service.md  add-realm.md  audit.md  upgrade-postgres.md
 ```
 
 ## Conventions
@@ -169,3 +180,12 @@ samples/web-app/
 - Guides are generic; samples are examples. System `rust10x`, namespace `rust10x-web-app` and all versions in samples are placeholders. Real values come from the user or project (`parameters.md`).
 - Secrets in samples are `REPLACE_ME` placeholders. Never commit real values.
 - `guide/base/kdd.md` is derived from the `kdd` source (CLI, loader, realm, docker, ktemplate, builders). Where behavior is not in the source, it is not asserted.
+
+## License
+
+Licensed under either of
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE))
+- MIT license ([LICENSE-MIT](LICENSE-MIT))
+
+at your option. Unless you state otherwise, any contribution you intentionally submit for inclusion in this work, as defined in the Apache-2.0 license, is dual licensed as above, without any additional terms or conditions.
