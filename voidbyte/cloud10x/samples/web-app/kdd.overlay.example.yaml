@@ -1,6 +1,10 @@
 # Example overlay with staging and production realms. All values are placeholders.
-# Copy to kdd.local.yaml (git-ignored) and fill in; list it in kdd.yaml under `overlays:`.
-# Overlay realms are merged into kdd.yaml; realms._base_ of kdd.yaml applies to them.
+# Copy to kdd.local.yaml (git-ignored) or to <env>/kdd-<env>.yaml (committed) and fill in.
+# List it in the FIRST document of kdd.yaml, top level (not under vars):
+#   overlays:
+#     - prod/kdd-prod.yaml
+# Overlay realms replace same-name realms; realms._base_ of kdd.yaml applies to them.
+# Only `realms:` is read from an overlay. Paths such as yaml_dir stay relative to the kdd root.
 # Never commit real account IDs, ARNs or registry hostnames in a public repo.
 realms:
   staging:

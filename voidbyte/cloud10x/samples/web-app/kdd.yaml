@@ -2,7 +2,11 @@ vars:
   - from_file: crates/services/web-server/Cargo.toml
     extract: ["version"]
   - from_env: ["USER"]                  # optional; available to templating
-  # overlays: [kdd.local.yaml]          # machine-specific realms, git-ignored
+# Extra realm files, relative to this folder. Top level of this document, NOT under vars.
+# A missing file is skipped silently by kdd (check.sh fails on it, except kdd.local.yaml).
+# overlays:
+#   - prod/kdd-prod.yaml                # committed, per environment
+#   - kdd.local.yaml                    # machine-specific realms, git-ignored
 ---
 system: rust10x
 image_tag: "{{version}}"

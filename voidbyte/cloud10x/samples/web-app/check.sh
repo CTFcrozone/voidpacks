@@ -18,6 +18,21 @@ grep -nE '^[a-z_-]+::' Cargo.toml $(dirname "$CRATE")/../*/Cargo.toml 2>/dev/nul
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || bad "version in $CRATE must be a literal X.Y.Z (got '$VERSION')"
 grep -q 'workspace *= *true' <(grep '^version' "$CRATE") && bad "$CRATE uses version.workspace"
 
+# kdd skips a listed overlay file that does not exist, silently: the realm just vanishes.
+# The git-ignored kdd.local.yaml may be absent; any other listed overlay must exist.
+if python3 -c 'import yaml' 2>/dev/null; then
+	while IFS= read -r ov; do
+		[ -f "$ov" ] || [ "$ov" = kdd.local.yaml ] || bad "overlay $ov listed in kdd.yaml does not exist (kdd skips it silently)"
+	done < <(python3 - <<'PY'
+import re, yaml
+head = re.split(r"(?m)^---.*$", open("kdd.yaml").read())[0]
+ov = (yaml.safe_load(head) or {}).get("overlays") or []
+for o in ([ov] if isinstance(ov, str) else ov):
+    print(o)
+PY
+)
+fi
+
 # k3d.sh constants must agree with the kdd.yaml realm (cluster, registry host and port)
 if [ -f k3d.sh ]; then
 	K_CLUSTER="$(sed -n 's/^CLUSTER=//p' k3d.sh | head -n1)"

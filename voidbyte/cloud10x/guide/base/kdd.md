@@ -20,7 +20,9 @@ vars:
   - from_file: crates/services/web-server/Cargo.toml
     extract: ["version"]
   - from_env: ["USER"]
-overlays: [kdd.local.yaml]        # optional
+overlays:                         # optional; top level of the FIRST document, not inside vars
+  - prod/kdd-prod.yaml            # path relative to the kdd root; a string or a list
+  - kdd.local.yaml                # git-ignored, machine-specific
 ---
 system: rust10x
 image_tag: "{{version}}"
@@ -50,9 +52,17 @@ blocks:
 |-----|----------|
 | `vars[].from_file` + `extract` | Reads keys from a **`.json` or `.toml`** file. JSON: top-level string keys. TOML: a top-level key, else the key inside the first table that has it (so `version` is found in `[package]`). `version.workspace = true` is not resolved: use a literal version. Other extensions are skipped with a warning. |
 | `vars[].from_env` | List of env var names. Unset variables are skipped silently. |
-| `overlays` | List of extra kdd yaml files (relative to the root). Their `realms` are merged in and replace same-name realms; the main `realms._base_` applies to them. Use for machine-specific realms (local registry IP) in a git-ignored file. |
+| `overlays` | A path or a list of paths (flow `[a, b]` and block `- a` forms are the same), relative to the kdd root, subfolders allowed (`prod/kdd-prod.yaml`). Only their `realms` are used; they replace same-name realms and the main `realms._base_` applies to them. Use for per-environment realm files and for machine-specific realms (local registry IP) in a git-ignored file. |
 
 An item cannot have both `from_file` and `from_env`.
+
+Overlay behavior (from the kdd loader):
+
+- `overlays` is read from the first document only. Indented under `vars` it is not an overlay list.
+- **A listed file that does not exist is skipped silently.** The realm just disappears and kdd fails later with "realm not found". `check.sh` fails on a missing overlay, except the git-ignored `kdd.local.yaml`.
+- An overlay is a normal kdd file (optional vars document, then a document with `realms:`). Its `blocks`, `builders`, `system` and `image_tag` are ignored; its own `overlays:` key is ignored (no nesting). Keep overlays to `realms:`.
+- Overlays load in order; a later file replaces a same-name realm from an earlier one. A same-name realm is replaced whole, not merged.
+- `yaml_dir` and other paths inside an overlay stay relative to the kdd root, not to the overlay's folder.
 
 > `from_file` extracts literal values only. A Cargo `version.workspace = true` is rendered as `{ workspace = true }`. Use a literal version in the crate you extract from. See `contract.md`.
 

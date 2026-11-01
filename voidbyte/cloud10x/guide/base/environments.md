@@ -26,7 +26,8 @@ Staging must be prod-like in everything the failing deploy would touch: same ing
 
 - Name realms `<env>` or `<env>_<cluster>`. The `context` is unique per realm; kdd selects the current realm by context (`kdd.md`).
 - Put shared defaults in `realms._base_` and per-realm values in the realm. Realm keys are available as `{{var}}` in manifests.
-- Keep account IDs, ARNs and registry hostnames out of committed files in public repos: use the git-ignored overlay `kdd.local.yaml` (`overlays:` in `kdd.yaml`). Overlay realms replace same-name realms and inherit `_base_`.
+- Layout: one committed overlay per environment (`staging/kdd-staging.yaml`, `prod/kdd-prod.yaml`), listed in `overlays:` in `kdd.yaml` (`kdd.md`). Overlay realms replace same-name realms and inherit `_base_`. Paths inside them (`yaml_dir`) stay relative to the kdd root.
+- Keep account IDs, ARNs and registry hostnames out of committed files in public repos: put those realms in the git-ignored overlay `kdd.local.yaml` instead.
 - `profile` (AWS CLI profile) and `project` (GCP) belong to the realm. The provider follows the context name prefix (`arn:aws` -> AWS with ECR repo creation and login retry, `gke` -> GCP).
 
 Placeholder example (see `samples/web-app/kdd.overlay.example.yaml`):
