@@ -1,0 +1,105 @@
+{
+  "Scaffold: minimal project (params + task)": {
+    "prefix": "c10-scaffold-min",
+    "description": "Scaffold: minimal project (params + task)",
+    "body": [
+      "# PARAMETERS (edit these; everything below refers to them)",
+      "",
+      "```",
+      "SYSTEM        = ${1:rust10x}",
+      "NAMESPACE     = ${2:rust10x-web-app}",
+      "CLUSTER       = ${3:cloudapp}            # k3d cluster -> context k3d-<CLUSTER>",
+      "REG_PORT      = ${4:5000}                # registry host k3d-<CLUSTER>-reg.localhost",
+      "REALM         = ${5:dev_k3d}",
+      "INGRESS_HOST  = ${6:api.rust10x.local}",
+      "RUST          = ${7:latest}              # latest | <exact version, e.g. 1.94.0>",
+      "BASE_OS       = ${8:alpine}",
+      "```",
+      "",
+      "# TASK",
+      "",
+      "Scaffold the minimal project from the reference `samples/minimal/`, following `scaffolding.md`."
+    ]
+  },
+  "Scaffold: web + PostgreSQL project (params + task)": {
+    "prefix": "c10-scaffold-db",
+    "description": "Scaffold: web + PostgreSQL project (params + task)",
+    "body": [
+      "# PARAMETERS (edit these; everything below refers to them)",
+      "",
+      "```",
+      "SYSTEM        = ${1:rust10x}",
+      "NAMESPACE     = ${2:rust10x-web-app}",
+      "CLUSTER       = ${3:cloudapp}            # k3d cluster -> context k3d-<CLUSTER>",
+      "REG_PORT      = ${4:5000}                # registry host k3d-<CLUSTER>-reg.localhost",
+      "REALM         = ${5:dev_k3d}",
+      "INGRESS_HOST  = ${6:api.rust10x.local}",
+      "RUST          = ${7:latest}              # latest | <exact version>",
+      "BASE_OS       = ${8:alpine}",
+      "PG_MAJOR      = ${9:18}            # PostgreSQL major, e.g. 18; pinned in the manifests",
+      "```",
+      "",
+      "# TASK",
+      "",
+      "Scaffold the web service with PostgreSQL and a db-mgmt Job from the reference `samples/web-db/`, following `scaffolding.md`. Scope is exactly its three workloads: `db`, `db-mgmt`, `web-server`."
+    ]
+  },
+  "Add one service (params + task)": {
+    "prefix": "c10-service",
+    "description": "Add one service (params + task)",
+    "body": [
+      "# PARAMETERS (edit these; everything below refers to them)",
+      "",
+      "```",
+      "BLOCK         = ${1:echo-server}       # kebab-case; used for the block, manifest, image, crate dir and pod label",
+      "PORT          = ${2:8082}",
+      "NEEDS_DB      = ${3:no}",
+      "EXPOSED       = ${4:yes}            # ingress route needed",
+      "INGRESS_PATH  = ${5:/echo}              # if EXPOSED",
+      "```",
+      "",
+      "Resolve every value not listed here from the existing project, then `parameters.md`. Never copy names from samples.",
+      "",
+      "# TASK",
+      "",
+      "Add the service `BLOCK` to this project per `services.md`.",
+      "",
+      "End with exactly: `cargo generate-lockfile && cargo clippy --workspace --locked --all-targets -- -D warnings && ./check.sh && ./k3d.sh build && ./k3d.sh deploy`"
+    ]
+  },
+  "Add a managed-DB realm (params + task)": {
+    "prefix": "c10-realm",
+    "description": "Add a managed-DB realm (params + task)",
+    "body": [
+      "# PARAMETERS (edit these; everything below refers to them)",
+      "",
+      "```",
+      "REALM         = ${1:staging}                   # realm name; also the overlay directory",
+      "CONTEXT       = ${2:staging-example}    # unique per realm",
+      "REGISTRY      = ${3:registry.example.com}",
+      "PROFILE       = ${4:none}                      # cloud CLI profile, or none",
+      "INGRESS_HOST  = ${5:api.rust10x.example}",
+      "REPLICAS      = ${6:3}",
+      "CERT_ISSUER   = ${7:letsencrypt-staging}",
+      "DB_CIDR       = ${8:203.0.113.0/24}",
+      "```",
+      "",
+      "# TASK",
+      "",
+      "Add the realm `REALM` to this project by reproducing `samples/web-db-staging/` with these parameters, following \"Realm reference\" in `scaffolding.md` and \"Adding a realm\" in `environments.md`.",
+      "",
+      "End with exactly: `./check.sh REALM`"
+    ]
+  },
+  "Audit the project (task)": {
+    "prefix": "c10-audit",
+    "description": "Audit the project (task)",
+    "body": [
+      "# TASK",
+      "",
+      "Audit this project per `audit.md`. Do not modify any file.",
+      "",
+      "End with exactly: `./check.sh`"
+    ]
+  }
+}

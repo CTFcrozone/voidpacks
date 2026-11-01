@@ -20,6 +20,8 @@ Prompt templates for `pro@coder` with the cloud10x knowledge. The reference proj
 | `audit.md` | Read-only review of a project against the pack. Findings only. | no |
 | `upgrade-postgres.md` | Runbook for a PostgreSQL major upgrade, using the project's real names. | one doc |
 
+Zed users: `../editors/zed/` has snippets that insert each prompt's parameters and task.
+
 ## Check a scaffold against its reference
 
 A scaffold prompt reproduces a reference project, so the result can be diffed. In the new project, with `P=~/.aipack-base/pack/installed/voidbyte/cloud10x`:

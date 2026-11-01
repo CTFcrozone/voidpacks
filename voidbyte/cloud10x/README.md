@@ -149,6 +149,7 @@ samples/web-app/
   .gitignore        kdd .out/ and local overlay
   crates/services/*/Dockerfile   web-server, db-mgmt
 samples/minimal/    reference project (compiled and run in testing); prompts copy it with your parameters
+editors/zed/        Zed snippets for the prompt templates
 samples/web-db/     reference project: web-server + PostgreSQL + db-mgmt Job, hardened, network policies
 samples/web-db-staging/  reference realm for it: overlay + manifests, managed database, digest image, TLS
 prompts/            pro@coder prompt templates (not loaded as knowledge)
