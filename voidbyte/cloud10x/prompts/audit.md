@@ -23,6 +23,7 @@ auto_context:
   enabled: false
 
 ## Full model names or aliases (see ~/.aipack-base/config-default.toml)
+## Audits reward a stronger model than flash: set one here if you have it configured.
 model: flash
 ```
 
@@ -41,9 +42,12 @@ Audit this project against the cloud10x knowledge. Do not modify any file. Repor
 
 ## Rules
 
-- Report only what the files show. Quote the file and line. Do not invent issues.
+- Evidence or silence. Every finding quotes, verbatim, the project lines it is about AND the pack sentence that defines the rule. If you cannot quote both, drop the finding.
+- Refute before reporting. For each candidate finding, look for what would make it wrong in the other files and quote what you checked: a NetworkPolicy with an empty `podSelector` selects every pod; a later `kdd kapply` stage in `k3d.sh` applies files not listed in an earlier one; a variable set in a ConfigMap rather than `env:`; a Service port versus the pod port. If the refutation holds, drop the finding.
+- Do not re-derive what `check.sh` and `lint.py` already enforce (hardening fields, probes, resources, run labels, image tags, env vars, version, registry). Assume they passed unless the files plainly contradict it. Spend the effort on what they cannot see: design, operations, data safety, missing policies, wrong-but-valid values.
+- Report only what the files show. Do not invent issues. Fewer, verified findings beat a long list. "No findings" is a valid result.
 - If something cannot be verified statically (cluster behavior, secret values, image contents), list it under "Not checked".
-- Cite the pack file and section that defines each rule.
+- Line numbers are unreliable from a model: give the file and the quoted text instead.
 
 ## Output
 
@@ -51,8 +55,10 @@ Order findings by impact, most impactful first. Use this shape, nothing else:
 
 ```
 ## Findings
-1. <file>:<line> - <what is wrong>
-   Rule: <pack file, section>
+1. <file> - <what is wrong>
+   Project: "<verbatim quote>"
+   Rule: "<verbatim pack sentence>" (<pack file, section>)
+   Checked and not refuted: <what you looked for in other files>
    Fix: <the concrete change>
 
 ## Not checked
