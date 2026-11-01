@@ -13,6 +13,7 @@ knowledge_globs:
 context_globs:
   - "*"
   - "crates/**/*.*"
+  - "crates/**/Dockerfile"
   - "k8s/**/*.*"
 
 ## Set to false to disable file writing (response below this file's prompt)
