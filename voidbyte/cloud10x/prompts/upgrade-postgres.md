@@ -39,21 +39,22 @@ Write a runbook for upgrading PostgreSQL from `FROM_MAJOR` to `TO_MAJOR` for thi
 
 ## Content
 
-Follow `database.md` (drop-based upgrades). The runbook uses this project's real names (namespace, StatefulSet, Services, secrets, db-mgmt Job), read from the manifests.
+Instantiate the "Major version upgrade (in-cluster StatefulSet)" section of `database.md` with this project's real names. That section is the procedure: do not invent another, and never propose an in-place image bump on the existing volume (PostgreSQL will not start a new major on an old data directory). Read the names from the manifests: namespace, StatefulSet, Service, PVC (`volumeClaimTemplates` name plus pod ordinal), secrets, db-mgmt Job, web-server Deployment and its replicas.
 
-1. Preconditions: backup verified, maintenance window if `DOWNTIME_OK` is no, extension and driver compatibility notes for the target major.
-2. Backup: `pg_dump -Fc` (already compressed; no extra gzip) to `BACKUP_STORE`, with a restore test on a throwaway copy before the change.
-3. Rehearsal: restore into a scratch StatefulSet at `TO_MAJOR` in a non-production realm; run the application's `/ready` and a smoke query.
-4. Cutover steps: scale down writers, final dump, replace the StatefulSet image to the pinned `TO_MAJOR`, restore, run db-mgmt, scale up.
-5. Verification checks and expected outputs.
-6. Rollback: restore the previous-major dump into a StatefulSet at `FROM_MAJOR`.
-7. A manifest diff section that shows only the image tag change the user will apply by hand.
+1. Preconditions: `\du` check, backup location, maintenance window, extension and driver (sqlx) compatibility for `TO_MAJOR`, and the image tag exists. If `DOWNTIME_OK` is `no`, write only the "Open questions" section explaining that this procedure needs downtime, and stop.
+2. Backup and verification (dump to `BACKUP_STORE` on the operator machine, `pg_restore -l`, row counts).
+3. Rehearsal with a scratch StatefulSet at `TO_MAJOR`, written out as a complete manifest derived from the project's rendered `03-postgres` (new names and labels, same ServiceAccount, own PVC, hardening intact), the restore, the comparison and the cleanup.
+4. Cutover, in the order of the section, including deleting the StatefulSet and the PVC and the restore step.
+5. Verification with expected outputs.
+6. Rollback, including deleting the PVC again.
+7. A manifest diff showing only the image tag change, copied from the real line in the project's `03-postgres` (quote it; do not guess it).
 
 ## Rules
 
-- Every command is copy-pasteable with the project's real names.
+- Every command is copy-pasteable with the project's real names. Apply manifests with `kdd kapply <stem>`, never `kubectl apply -f` on the source files.
+- Secret names and keys, the superuser, the image line and the PVC name are read from the files. If one is not there, list it under "Open questions".
 - Statements that depend on the cluster or data size are marked "measure first".
-- If a fact needed for a step is not in the files, list it under "Open questions" instead of guessing.
+- Do not write commands for steps the section does not contain.
 
 ## Output
 
