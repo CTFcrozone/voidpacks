@@ -116,7 +116,9 @@ The scripts below are the procedure. A runbook copies them verbatim and changes 
 Rules:
 
 - Stream through `kubectl exec`: dumps go to a local file with `>`, restores read stdin with `exec -i`. No port-forward, no local client versions to match, no password on a command line, no file in the pod (`/tmp` there is an `emptyDir`). Use `-i`, never `-it`, in scripts. The official image trusts the local socket, so `-U postgres` needs no password.
-- `set -euo pipefail` in every phase. A step that fails stops the script before the next one.
+- `set -euo pipefail` in every phase: a failing step stops the script before the next one. For the same reason never paste a phase into an interactive shell (the next error would close your terminal). Save the variables block as `vars.sh` and each phase as `phaseA.sh`, `phaseB.sh`, `phaseC.sh`, then run `bash -c 'source vars.sh; source phaseA.sh'`.
+- Do not commit the image change until the cutover is verified. Phase B edits `03-postgres.yaml` in the working tree and phase C reverts it with `git checkout`; a committed change would make the rollback a no-op.
+- If phase A stops after applying the rehearsal (for example the target image does not exist), clean up before retrying: `kubectl -n NS delete -f /tmp/<STS>-rehearsal.yaml; kubectl -n NS delete pvc/data-<STS>-rehearsal-0`.
 - **Nothing is deleted before the final dump is verified**: it is written to `$DUMP.partial`, restored into the rehearsal instance, and its row counts compared with the source. Only then it replaces `$DUMP`. Deleting the PVC destroys the only copy of the data on the cluster.
 - Apply with `kdd kapply <stem>`, never `kubectl apply -f k8s/...` on source files: they are templates (`{{system}}`, `{{image_tag}}`) and only the rendered `.out/` files are valid YAML. The rehearsal manifest is generated from the rendered file; check it holds only the db objects (Service, StatefulSet) before applying.
 - Roles come from db-mgmt and the secrets, not from the dump. Precondition: `\du` lists only `postgres` and `app_user`; otherwise also dump `pg_dumpall --globals-only` and replay it first.
@@ -209,7 +211,7 @@ $K delete "pvc/data-$STS-rehearsal-0"
 echo "cutover OK: now check /health, /ready and one business request"
 ```
 
-Then verify `/health`, `/ready` and one business request.
+Then verify: `curl -i http://<ingress-host>/health` and `/ready` both return `200 OK` with body `ok`, and one business request works.
 
 Phase C - rollback to `FROM` (writes made on `TO` are lost; decide before the window):
 
