@@ -64,6 +64,7 @@ Add one service `BLOCK` to the existing project. Read `kdd.yaml`, `k3d.sh`, the 
 
 ## Output
 
+- Before finishing, list each env var the code reads and the exact manifest line that sets it. Fix any gap before answering.
 - List every file created and every file modified, with a one-line reason each.
 - List assumptions. If something required is missing, state it instead of guessing.
 - End with exactly: `cargo check --workspace --locked && ./check.sh && ./k3d.sh build && ./k3d.sh deploy`

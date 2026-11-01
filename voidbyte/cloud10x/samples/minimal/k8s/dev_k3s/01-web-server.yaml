@@ -1,0 +1,83 @@
+# Ports: Service 80 -> targetPort 8081 -> containerPort 8081 (NetworkPolicy uses 8081).
+apiVersion: v1
+kind: Service
+metadata:
+  name: rust10x-web-server
+  namespace: rust10x-web-app
+spec:
+  type: ClusterIP
+  selector:
+    app: rust10x-web-server
+  ports:
+    - port: 80
+      targetPort: 8081
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rust10x-web-server
+  namespace: rust10x-web-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: rust10x-web-server
+  template:
+    metadata:
+      labels:
+        app: rust10x-web-server
+        run: "{{system}}-web-server"
+    spec:
+      serviceAccountName: rust10x-web-server
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: rust10x-web-server
+      containers:
+        - name: web-server
+          image: "{{registry}}/{{system}}-web-server:{{image_tag}}"
+          ports:
+            - containerPort: 8081
+          env:
+            - name: RUST_LOG
+              value: info
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 50m, memory: 32Mi }
+            limits: { cpu: 500m, memory: 128Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: rust10x-web-server
+  namespace: rust10x-web-app
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: rust10x-web-server

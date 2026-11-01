@@ -28,3 +28,17 @@ Every name and version is defined once and only referenced elsewhere. A scaffold
 - Run `check.sh` after `./k3d.sh up` and before any build (kdd needs the cluster context).
 - `Cargo.toml` dependencies are crates.io crates (or path/workspace members). `std`, `core`, `alloc` and module paths such as `std::env` are never dependencies.
 - Names and versions in the pack's examples are placeholders; take real values per `parameters.md`.
+
+## Known failure modes
+
+Each of these happened in a real scaffold. All are checked by `check.sh` / `lint.py`.
+
+| Symptom | Cause | Rule |
+|---|---|---|
+| `invalid reference format` on build | empty version: `version.workspace = true`, or a comment after `version = "..."` | literal version on its own line |
+| `ImagePullBackOff` / push to the wrong registry | `REG_NAME` is the system name, not the cluster | `REG_NAME=<CLUSTER>-reg.localhost`; `kdd.yaml` registry derived from it |
+| `cargo` manifest error `invalid unquoted key` | `std::env` listed as a dependency | std/core/alloc are never dependencies |
+| env var unset at runtime | code reads a variable the manifest never sets | every `env::var` is set explicitly in the manifests |
+| `rustc X is not supported by the following packages` | stale pinned Rust tag | floating `rust:${RUST_TAG}` (`parameters.md`) |
+| cluster half-created, script continues | `\|\| true` on create commands | create only if absent; never mask failures |
+| kdd prompt hangs `check.sh` | realm context does not exist yet | create the cluster first, then `check.sh` |

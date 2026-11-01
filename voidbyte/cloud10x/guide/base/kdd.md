@@ -184,7 +184,7 @@ All accept `-d <root_dir>` (default `./`). Block lists are comma-separated, no s
 Rust workspace flow (build outside kdd, publish and deploy with kdd):
 
 ```sh
-VERSION=$(sed -n 's/^version *= *"\(.*\)"/\1/p' crates/services/web-server/Cargo.toml | head -n1)
+VERSION=$(sed -n 's/^version *= *"\([^"]*\)".*/\1/p' crates/services/web-server/Cargo.toml | head -n1)
 docker build -f crates/services/web-server/Dockerfile \
   -t localhost:5000/rust10x-web-server:$VERSION .
 kdd dpush web-server

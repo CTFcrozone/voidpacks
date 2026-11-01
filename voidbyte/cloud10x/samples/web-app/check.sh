@@ -10,7 +10,7 @@ fail=0
 bad() { echo "FAIL: $*" >&2; fail=1; }
 
 SYSTEM="$(sed -n 's/^system: *//p' kdd.yaml | head -n1)"
-VERSION="$(sed -n 's/^version *= *"\(.*\)"/\1/p' "$CRATE" | head -n1)"
+VERSION="$(sed -n 's/^version *= *"\([^"]*\)".*/\1/p' "$CRATE" | head -n1)"
 
 [ -n "$SYSTEM" ] || bad "system missing in kdd.yaml"
 [ -f "$CRATE" ] || bad "version source from_file not found: $CRATE"
@@ -58,6 +58,18 @@ grep -rhn 'run:' "$OUT" | grep -v "\"\?${SYSTEM}-" && bad "run label not prefixe
 # every env var read in code must exist in the manifests
 for v in $(grep -rhoE 'env::var\("[A-Z_]+"\)|std::env::var\("[A-Z_]+"\)' crates | sed 's/.*("\(.*\)")/\1/' | sort -u); do
 	grep -rq "$v" "$OUT" || bad "env var $v used in code but not set in manifests"
+done
+
+# scripts must not mask failures
+[ -f k3d.sh ] && grep -n '|| true' k3d.sh && bad "k3d.sh masks failures with '|| true' (create only if absent instead)"
+
+# Dockerfiles: locked build, numeric non-root user, exec-form entrypoint, no :latest
+for df in ${BASE}*/Dockerfile; do
+	[ -f "$df" ] || continue
+	grep -q 'cargo build --locked' "$df" || bad "$df: cargo build must use --locked"
+	grep -qE '^USER [0-9]+' "$df" || bad "$df: needs a numeric USER"
+	grep -qE '^ENTRYPOINT \[' "$df" || bad "$df: ENTRYPOINT must be exec form"
+	grep -E '^FROM ' "$df" | grep -E ':latest( |$)' && bad "$df: FROM uses :latest"
 done
 
 [ $fail -eq 0 ] && echo "OK: system=$SYSTEM version=$VERSION"

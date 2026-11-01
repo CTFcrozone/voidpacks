@@ -64,7 +64,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Version
         id: v
-        run: echo "version=$(sed -n 's/^version *= *"\(.*\)"/\1/p' crates/services/web-server/Cargo.toml | head -n1)" >> "$GITHUB_OUTPUT"
+        run: echo "version=$(sed -n 's/^version *= *"\([^"]*\)".*/\1/p' crates/services/web-server/Cargo.toml | head -n1)" >> "$GITHUB_OUTPUT"
       - uses: docker/setup-buildx-action@v3
       - name: Registry login                # replace with your registry's OIDC login action
         if: github.ref == 'refs/heads/main'

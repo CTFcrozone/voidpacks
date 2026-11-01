@@ -1,0 +1,8 @@
+# kdd rendered manifests
+k8s/*/.out/
+
+# machine-specific kdd realms (overlay)
+kdd.local.yaml
+
+target/
+.aipack/

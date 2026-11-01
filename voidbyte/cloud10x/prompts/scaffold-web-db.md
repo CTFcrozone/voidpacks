@@ -51,6 +51,12 @@ Create a new Rust workspace AND its deployment using the cloud10x knowledge. The
 
 Do NOT add: Valkey, queues, workers, extra services, Helm, Kustomize, service mesh, cert-manager, monitoring.
 
+## Base (follow, do not reinvent)
+
+- `web-server`, `kdd.yaml`, `k3d.sh`, Dockerfile pattern, namespace, ingress, hardening and NetworkPolicy style: reproduce `samples/minimal/` and apply the PARAMETERS the same way (value mapping in `prompts/scaffold-minimal.md`; reference values `rust10x`, `rust10x-web-app`, `cloudapp`, `api.rust10x.local`, `5000`, `dev_k3d`).
+- Database parts (`01-config`, `02-secrets`, `03-postgres`, `04-db-mgmt-job`, network policies for the DB): follow `samples/web-app/k8s/dev_k3s/` and `database.md`, adapted to the three workloads below. Drop everything about Valkey, queues and the `queue` block.
+- Add to the reference only what the three workloads need; keep every convention of the reference unchanged.
+
 ## Rust code
 
 - Root `Cargo.toml` workspace with members `crates/services/web-server`, `crates/services/db-mgmt`; `resolver = "3"`; edition = the latest stable edition. Do not set `rust-version` unless `RUST` is pinned (then use it). Dependencies are crates.io crates only: never `std`, `core`, `alloc` or module paths such as `std::env`. User runs `cargo generate-lockfile` (state it); images build with `--locked`.
@@ -97,8 +103,21 @@ Do NOT add: Valkey, queues, workers, extra services, Helm, Kustomize, service me
 - In `k3d.sh`: `REG_NAME` is exactly `<CLUSTER>-reg.localhost` (never the system name). `kdd.yaml` realm: `context: k3d-<CLUSTER>`, `registry: k3d-<REG_NAME>:<REG_PORT>`.
 - Do not write manifests that fail `check.sh` (it runs `lint.py`; rules in `lint.md`).
 
+## Self-check (do this before answering; fix any failure silently)
+
+1. `k3d.sh`: `REG_NAME` is exactly `<CLUSTER>-reg.localhost`; `kdd.yaml` realm has `context: k3d-<CLUSTER>` and `registry: k3d-<REG_NAME>:<REG_PORT>`.
+2. `crates/services/web-server/Cargo.toml`: `version = "X.Y.Z"` literal on its own line, no trailing comment, never `version.workspace = true`.
+3. Every env var the code reads is set in the manifests; list each var and the manifest line that sets it.
+4. No `std`, `core` or module paths (`std::env`) in any `Cargo.toml`.
+5. `k3d.sh` contains no `|| true`.
+6. Every Dockerfile: `ARG RUST_TAG` before `FROM rust:${RUST_TAG}`, `cargo build --locked`, numeric `USER`, exec-form `ENTRYPOINT`.
+7. Every workload: dedicated ServiceAccount (defined in `00-namespace`), `automountServiceAccountToken: false`, probes, requests and limits, label `run`.
+8. The Namespace has the three Pod Security labels and a default-deny NetworkPolicy exists.
+9. No value from the reference project survives where a parameter differs (search for its example names).
+
 ## Output
 
+- Before finishing, list each env var the code reads and the exact manifest line that sets it. Fix any gap before answering.
 - List every file created and every assumption (ports, env names, health path, which default each unresolved parameter used).
 - Env var names must match the Rust code you wrote.
 - If something required is missing, state it instead of guessing.
